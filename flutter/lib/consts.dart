@@ -1,8 +1,9 @@
 import 'package:flutter_hbb/models/ffi_model.dart';
 
 enum DesktopType {
+  cm("cm"),
   main("main"),
-  cm("cm");
+  install('install');
 
   const DesktopType(this.value);
   final String value;

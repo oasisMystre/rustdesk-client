@@ -61,12 +61,20 @@ class PlatformFFi extends Event {
       MacOsDeviceInfo macOsInfo = await deviceInfo.macOsInfo;
       name = macOsInfo.computerName;
       id = macOsInfo.systemGUID ?? id;
+    } else if (Platform.isWindows) {
+      WindowsDeviceInfo windowInfo = await deviceInfo.windowsInfo;
+      name = windowInfo.computerName;
+      id = windowInfo.computerName;
+    } else if (Platform.isLinux) {
+      LinuxDeviceInfo linuxInfo = await deviceInfo.linuxInfo;
+      name = linuxInfo.name;
+      id = linuxInfo.machineId ?? linuxInfo.id;
     }
 
     if (appType == DesktopType.cm) {
       _ffiBind.cmInit();
     }
-    
+
     await _ffiBind.mainDeviceId(id: id);
     await _ffiBind.mainDeviceName(name: name);
     await _ffiBind.mainSetHomeDir(home: _homeDir);

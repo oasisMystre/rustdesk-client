@@ -7,7 +7,6 @@ import 'package:uni_links/uni_links.dart';
 import 'package:get/state_manager.dart';
 import 'package:get/instance_manager.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:get/get_navigation/src/root/get_material_app.dart';
 
 import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/consts.dart';
@@ -60,36 +59,22 @@ void main(List<String> args) async {
   await windowManager.ensureInitialized();
 
   if (args.isNotEmpty && args.first == '--cm') {
-    debugPrint('Fuck you blud');
     await initEnv(DesktopType.cm);
     listenUniLinks(handleByFlutter: false);
-  } 
-  // else {
-  //   WindowOptions windowOptions = WindowOptions(
-  //     center: true,
-  //     skipTaskbar: false,
-  //     size: Size(800, 600),
-  //     titleBarStyle: TitleBarStyle.hidden,
-  //     backgroundColor: Colors.transparent,
-  //   );
+  }
+  if (args.isNotEmpty && args.first == '--install') {
+    await initEnv(DesktopType.install);
+    if (await globalFFI.permissionModel.requestPermissions()) {
+      exit(0);
+    }
+  } else {
+    await initEnv(DesktopType.main);
+    await bind.mainCheckConnectStatus();
 
-  //   windowManager.waitUntilReadyToShow(windowOptions, () async {
-  //     await windowManager.show();
-  //     await windowManager.focus();
-  //   });
-
-  //   await initEnv(DesktopType.main);
-  //   await bind.mainCheckConnectStatus();
-
-  //   if (await globalFFI.permissionModel.requestPermissions()) {
-  //     await globalFFI.serverModel.startService();
-  //   }
-
-  //   runApp(GetMaterialApp(
-  //     theme: ThemeData.dark(useMaterial3: true),
-  //     home: const MainApplication(),
-  //   ));
-  // }
+    if (await globalFFI.permissionModel.requestPermissions()) {
+      await globalFFI.serverModel.startService();
+    }
+  }
 
   debugPrint('$args ---args');
 }

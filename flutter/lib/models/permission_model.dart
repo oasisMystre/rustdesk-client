@@ -1,8 +1,9 @@
-import 'dart:async';
 import 'dart:io';
+import 'dart:async';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 
+import 'package:path/path.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/utils/index.dart';
 import 'package:flutter_hbb/models/ffi_model.dart';
@@ -14,7 +15,7 @@ enum PermissionStep {
   inputMonitoring,
   screenRecording,
   audioRecording,
-  settingsInstall,
+  windowInstall,
   startService,
 }
 
@@ -25,11 +26,14 @@ class PermissionModel extends GetxController {
   Rx<bool> isProcessTrusted = false.obs;
   Rx<bool> isInputMonitoring = false.obs;
   Rx<bool> isCanScreenRecording = false.obs;
+  Rx<bool> windowInstalled = false.obs;
 
   @protected
   PermissionStep? currentPermissionStep;
   @protected
-  PermissionStep permissionStep = PermissionStep.trustProcess;
+  PermissionStep permissionStep = Platform.isMacOS
+      ? PermissionStep.trustProcess
+      : PermissionStep.windowInstall;
 
   @protected
   Timer? scheduler;
@@ -48,17 +52,23 @@ class PermissionModel extends GetxController {
   }
 
   Future<bool> canStartService() async {
-    final bool value = bind.mainIsProcessTrusted(prompt: false) &&
-        bind.mainIsCanInputMonitoring(prompt: false) &&
-        bind.mainIsCanScreenRecording(prompt: false) &&
-        bind.mainIsInstalledDaemon(prompt: false);
-
     if (Platform.isMacOS) {
-      return value &&
-          (await platformChannel.osxCanRecordAudio() ==
-              PermissionAuthorizeType.authorized);
+      final bool value = bind.mainIsProcessTrusted(prompt: false) &&
+          bind.mainIsCanInputMonitoring(prompt: false) &&
+          bind.mainIsCanScreenRecording(prompt: false) &&
+          bind.mainIsInstalledDaemon(prompt: false);
+
+      if (Platform.isMacOS) {
+        return value &&
+            (await platformChannel.osxCanRecordAudio() ==
+                PermissionAuthorizeType.authorized);
+      }
+      return value;
+    } else if (Platform.isWindows) {
+      return bind.mainIsInstalled();
+    } else {
+      return false;
     }
-    return value;
   }
 
   Future<bool> requestPermissions() {
@@ -126,7 +136,14 @@ class PermissionModel extends GetxController {
                 (await mainGetBoolOption(GlobalOptions.stopService));
           }
           break;
-        default:
+        case PermissionStep.windowInstall:
+          if (!windowInstalled.value) {
+            final String exePath = Platform.resolvedExecutable;
+            final String exeDir = File(exePath).parent.path;
+            await bind.installInstallMe(
+                options: 'desktopicon startmenu',
+                path: join(exeDir, await bind.mainGetAppName()));
+          }
           break;
       }
     });
