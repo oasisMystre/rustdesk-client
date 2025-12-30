@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter_hbb/models/model.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_hbb/consts.dart';
+import 'package:flutter_hbb/models/model.dart';
 import 'package:flutter_hbb/models/ffi_model.dart';
 import 'package:flutter_hbb/models/client_model.dart';
 
@@ -30,7 +30,9 @@ enum ApproveMode {
 }
 
 class ServerModel extends GetxController {
-  Timer? scheduler;
+  late Timer scheduler;
+  final WeakReference<FFIModel> parent;
+
   final RxString serverId = "".obs;
   final RxBool fileOk = false.obs;
   final RxBool mediaOk = false.obs;
@@ -47,42 +49,46 @@ class ServerModel extends GetxController {
 
   final RxList<Client> clients = RxList([]);
 
-  ServerModel(WeakReference<FFIModel> parent) {
-    parent.target?.updateEventListener(parent.target!.sessionId, '');
-  }
-
-  Future<void> init() async {
-    Future<void> init() async {
-      final connectionStatus =
-          jsonDecode(await bind.mainGetConnectStatus()) as Map<String, dynamic>;
-      final connectingStatus = connectionStatus['status_num'] as int;
-      if (connectingStatus > 0) {
-        connectStatus.value = ConnectionStatus.ready;
-      } else if (connectingStatus < 0) {
-        connectStatus.value = ConnectionStatus.pending;
-      } else {
-        connectStatus.value = ConnectionStatus.connecting;
-      }
-
-      serverId.value = await bind.mainGetMyId();
-      debugPrint('$connectingStatus');
-    }
-
+  ServerModel(this.parent) {
     Future.delayed(Duration.zero, () async {
       if (await bind.optionSynced()) {
-        await init();
+        await _updateStatus();
       }
     });
 
     scheduler = Timer.periodic(Duration(seconds: 1), (timer) async {
-      await init();
+      await _updateStatus();
     });
+  }
+
+  Future<void> _updateStatus() async {
+    final connectionStatus =
+        jsonDecode(await bind.mainGetConnectStatus()) as Map<String, dynamic>;
+    final connectingStatus = connectionStatus['status_num'] as int;
+    if (connectingStatus > 0) {
+      connectStatus.value = ConnectionStatus.ready;
+    } else if (connectingStatus < 0) {
+      connectStatus.value = ConnectionStatus.pending;
+    } else {
+      connectStatus.value = ConnectionStatus.connecting;
+    }
+
+    serverId.value = await bind.mainGetMyId();
+    if (parent.target?.stateModel.desktopType.value == DesktopType.cm) {
+      final response = await bind.cmCheckClientsLength(length: clients.length);
+      if (response != null) {
+        updateClientState(response);
+      }
+    }
+
+    debugPrint('$connectingStatus, ');
+    await updateClientState();
   }
 
   @override
   void dispose() {
     super.dispose();
-    scheduler?.cancel();
+    scheduler.cancel();
   }
 
   Future<void> setVerificationMethod(ServerVerificationMethod method) async {
@@ -101,8 +107,9 @@ class ServerModel extends GetxController {
     clients.clear();
   }
 
-  Future<void> _updateClientState([String? json]) async {
+  Future<void> updateClientState([String? json]) async {
     var response = await bind.cmGetClientsState();
+    debugPrint('response=$response');
     List<dynamic> clientsJson = jsonDecode(response);
     clients.clear();
     for (var clientJson in clientsJson) {
@@ -114,8 +121,10 @@ class ServerModel extends GetxController {
 
   Future<void> startService() async {
     isStarted.value = true;
+    parent.target?.updateEventListener(parent.target!.sessionId, '');
+
     await bind.mainStartService();
-    _updateClientState();
+    updateClientState();
   }
 
   Future<void> _sendLoginResponse(Client client, bool response) async {

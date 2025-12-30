@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
@@ -27,9 +28,11 @@ class PermissionModel extends GetxController {
 
   @protected
   PermissionStep? currentPermissionStep;
-
   @protected
   PermissionStep permissionStep = PermissionStep.trustProcess;
+
+  @protected
+  Timer? scheduler;
 
   PermissionModel() {
     isProcessTrusted.value = bind.mainIsProcessTrusted(prompt: false);
@@ -58,11 +61,12 @@ class PermissionModel extends GetxController {
     return value;
   }
 
-  void Function() requestPermissions(VoidCallback? onSuccess) {
-    final timer = periodicImmediate(Duration(seconds: 1), (timer) async {
+  Future<bool> requestPermissions() {
+    final Completer<bool> completer = Completer();
+    scheduler = periodicImmediate(Duration(seconds: 1), (timer) async {
       if (timer != null && await canStartService()) {
         timer.cancel();
-        if (onSuccess != null) onSuccess();
+        if (!completer.isCompleted) completer.complete(true);
         return;
       }
 
@@ -127,8 +131,12 @@ class PermissionModel extends GetxController {
       }
     });
 
-    return () {
-      if (timer.isActive) timer.cancel();
-    };
+    return completer.future;
+  }
+
+  @override
+  void dispose() {
+    scheduler?.cancel();
+    super.dispose();
   }
 }

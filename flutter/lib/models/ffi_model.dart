@@ -1,3 +1,4 @@
+import 'package:flutter_hbb/consts.dart';
 import 'package:get/get.dart';
 
 import 'package:flutter_hbb/models/model.dart';
@@ -12,7 +13,7 @@ RustdeskImpl get bind => platformFFi.ffiBind;
 
 late FFIModel globalFFI;
 
-Future<void> initGlobalFFI() async {
-  globalFFI = FFIModel();
+Future<void> initGlobalFFI(DesktopType desktopType) async {
+  globalFFI = FFIModel(desktopType);
   Get.put<FFIModel>(globalFFI, permanent: true);
 }

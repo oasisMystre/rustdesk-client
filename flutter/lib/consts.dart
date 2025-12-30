@@ -1,7 +1,12 @@
 import 'package:flutter_hbb/models/ffi_model.dart';
 
+enum DesktopType {
+  main("main"),
+  cm("cm");
 
-const String kAppTypeMain = "main";
+  const DesktopType(this.value);
+  final String value;
+}
 
 enum GlobalOptions {
   key("key"),

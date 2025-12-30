@@ -45,6 +45,7 @@ setServerConfiguration(
       key: GlobalOptions.customRendezvousServer.value, value: idServer);
 }
 
+
 setClientConfiguration({required String password}) async {
   await bind.mainSetPermanentPassword(password: password);
   await mainSetBoolOption(GlobalOptions.enableCamera, true);

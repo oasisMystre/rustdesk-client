@@ -3,9 +3,12 @@ import 'dart:ffi';
 import 'dart:convert';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_hbb/common.dart';
-import 'package:flutter_hbb/generated_bridge.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+
+import 'package:flutter_hbb/common.dart';
+import 'package:flutter_hbb/consts.dart';
+import 'package:flutter_hbb/generated_bridge.dart';
 
 import './event_handler.dart';
 
@@ -13,8 +16,10 @@ typedef F3 = Pointer<Uint8> Function(Pointer<Utf8>, int);
 typedef F3Dart = Pointer<Uint8> Function(Pointer<Utf8>, Int32);
 
 class PlatformFFi extends Event {
-  final String _dir = '';
+  String _dir = '';
   final String _homeDir = '';
+
+  late DesktopType _appType;
   late RustdeskImpl _ffiBind;
   StreamEventHandler? _eventCallback;
 
@@ -23,7 +28,11 @@ class PlatformFFi extends Event {
   RustdeskImpl get ffiBind => _ffiBind;
   static final PlatformFFi instance = PlatformFFi._();
 
-  Future<PlatformFFi> init(String appType) async {
+  bool get isMain => _appType == DesktopType.main;
+
+  Future<PlatformFFi> init(DesktopType appType) async {
+    _appType = appType;
+
     late DynamicLibrary dylib;
     if (Platform.isWindows) {
       dylib = DynamicLibrary.open("librustdesk.dll");
@@ -33,13 +42,17 @@ class PlatformFFi extends Event {
 
     _ffiBind = RustdeskImpl(dylib);
 
-    if (Platform.isLinux) {
-      await _ffiBind.mainStartDbusServer();
-    } else if (Platform.isMacOS) {
-      await _ffiBind.mainStartIpcUrlServer();
+    _dir = (await getApplicationDocumentsDirectory()).path;
+
+    if (isMain) {
+      if (Platform.isLinux) {
+        await _ffiBind.mainStartDbusServer();
+      } else if (Platform.isMacOS) {
+        await _ffiBind.mainStartIpcUrlServer();
+      }
     }
 
-    _startListenEvent(_ffiBind, appType);
+    _startListenEvent(_ffiBind);
 
     String id = "Na";
     String name = "Flutter";
@@ -50,6 +63,10 @@ class PlatformFFi extends Event {
       id = macOsInfo.systemGUID ?? id;
     }
 
+    if (appType == DesktopType.cm) {
+      _ffiBind.cmInit();
+    }
+    
     await _ffiBind.mainDeviceId(id: id);
     await _ffiBind.mainDeviceName(name: name);
     await _ffiBind.mainSetHomeDir(home: _homeDir);
@@ -59,12 +76,11 @@ class PlatformFFi extends Event {
   }
 
   void setEventCallback(StreamEventHandler function) async {
-    debugPrint('start me fuck');
     _eventCallback = function;
   }
 
-  void _startListenEvent(RustdeskImpl rustdeskImpl, String appType) {
-    var sink = rustdeskImpl.startGlobalEventStream(appType: appType);
+  void _startListenEvent(RustdeskImpl rustdeskImpl) {
+    var sink = rustdeskImpl.startGlobalEventStream(appType: _appType.value);
     sink.listen((message) {
       () async {
         debugPrint('message=$message');

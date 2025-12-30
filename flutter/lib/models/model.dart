@@ -1,3 +1,4 @@
+import 'package:flutter_hbb/consts.dart';
 import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter/cupertino.dart';
@@ -13,25 +14,16 @@ class FFIModel extends GetxController {
   late ServerModel serverModel;
   late PlatformFFi platformFFi;
   late PermissionModel permissionModel;
-  late final VoidCallback cancelPermissionRequests;
 
   late UuidValue sessionId;
 
-  FFIModel() {
+  FFIModel(DesktopType desktopType) {
     sessionId = Uuid().v4obj();
-    stateModel = Get.put(StateModel());
+
     platformFFi = Get.put(PlatformFFi.instance);
     permissionModel = Get.put(PermissionModel());
+    stateModel = Get.put(StateModel(desktopType));
     serverModel = Get.put(ServerModel(WeakReference(this)));
-  }
-
-  init() {
-    cancelPermissionRequests = permissionModel.requestPermissions(() async {
-      debugPrint('sync successful');
-      await serverModel.startService();
-      await serverModel.init();
-      debugPrint('service started');
-    });
   }
 
   updateEventListener(UuidValue sessionID, String peerId) {
@@ -66,8 +58,6 @@ class FFIModel extends GetxController {
   @override
   void dispose() {
     super.dispose();
-    cancelPermissionRequests();
-    serverModel.dispose();
     Get.delete<StateModel>();
     Get.delete<ServerModel>();
     Get.delete<PlatformFFi>();
