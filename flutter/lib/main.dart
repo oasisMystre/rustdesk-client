@@ -4,13 +4,10 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:uni_links/uni_links.dart';
-import 'package:get/state_manager.dart';
-import 'package:get/instance_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/consts.dart';
-import 'package:flutter_hbb/models/model.dart';
 import 'package:flutter_hbb/models/ffi_model.dart';
 
 Future<void> initEnv(DesktopType appType) async {
@@ -33,9 +30,6 @@ Future<void> initEnv(DesktopType appType) async {
       );
     }
   }
-  platformFFi.registerEventHandler('native_ui', 'native_ui', (event) async {
-    debugPrint("[event] native_ui $event");
-  });
 }
 
 StreamSubscription? listenUniLinks({handleByFlutter = true}) {
@@ -58,6 +52,12 @@ void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
 
+  windowManager.waitUntilReadyToShow(const WindowOptions(skipTaskbar: true),
+      () {
+    windowManager.hide();
+    windowManager.setSkipTaskbar(true);
+  });
+
   if (args.isNotEmpty && args.first == '--cm') {
     await initEnv(DesktopType.cm);
     listenUniLinks(handleByFlutter: false);
@@ -74,64 +74,5 @@ void main(List<String> args) async {
     if (await globalFFI.permissionModel.requestPermissions()) {
       await globalFFI.serverModel.startService();
     }
-  }
-
-  debugPrint('$args ---args');
-}
-
-class MainApplication extends StatefulWidget {
-  const MainApplication({super.key});
-
-  @override
-  State<StatefulWidget> createState() => _MainApplicationState();
-}
-
-class _MainApplicationState extends State<MainApplication> {
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
-  void dispose() {
-    Get.delete<FFIModel>();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Obx(() {
-          return Column(
-            children: [
-              TextButton(
-                child: Text("Start Service"),
-                onPressed: () async {
-                  debugPrint(
-                      bind.mainIsCanScreenRecording(prompt: true).toString());
-                },
-              ),
-              Column(
-                children: [
-                  Text(
-                      'Service Stopped: ${globalFFI.permissionModel?.isServiceStopped.value}'),
-                  Text(
-                      'Trusted Process: ${globalFFI.permissionModel?.isProcessTrusted.value}'),
-                  Text(
-                      'Input monitoring: ${globalFFI.permissionModel?.isInputMonitoring.value}'),
-                  Text(
-                      'Screen recording: ${globalFFI.permissionModel?.isCanScreenRecording.value}'),
-                  Text(
-                      'Audio recording: ${globalFFI.permissionModel?.canRecordAudio.value}'),
-                  Text(
-                      'Daemon Installed: ${globalFFI.permissionModel?.isInstalledDaemon.value}'),
-                ],
-              )
-            ],
-          );
-        }),
-      ),
-    );
   }
 }
