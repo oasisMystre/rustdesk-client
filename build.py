@@ -254,7 +254,10 @@ def external_resources(flutter, args, res_dir):
     if not features:
         return
 
-    print(f'Build with features {list(features.keys())}')
+    if isinstance(features, dict):
+      print(f'Build with features {list(features.keys())}')
+    else:
+      print(f'Build with features {features}')
     if os.path.isdir(res_dir) and not os.path.islink(res_dir):
         shutil.rmtree(res_dir)
     elif os.path.exists(res_dir):
@@ -410,7 +413,7 @@ def build_flutter_dmg(version, features):
     system2(
         "cp target/release/liblibrustdesk.dylib target/release/librustdesk.dylib")
     os.chdir('flutter')
-    system2('flutter build macos --release')
+    system2('flutter build macos --release --verbose')
     system2('cp -rf ../target/release/service ./build/macos/Build/Products/Release/RustDesk.app/Contents/MacOS/')
     '''
     system2(
@@ -425,7 +428,7 @@ def build_flutter_arch_manjaro(version, features):
         system2(f'cargo build --features {features} --lib --release')
     ffi_bindgen_function_refactor()
     os.chdir('flutter')
-    system2('flutter build linux --release')
+    system2('flutter build linux --release --verbose')
     system2(f'strip {flutter_build_dir}/lib/librustdesk.so')
     os.chdir('../res')
     system2('HBB=`pwd`/.. FLUTTER=1 makepkg -f')
@@ -438,7 +441,7 @@ def build_flutter_windows(version, features, skip_portable_pack):
             print("cargo build failed, please check rust source code.")
             exit(-1)
     os.chdir('flutter')
-    system2('flutter build windows --release')
+    system2('flutter build windows --release --verbose')
     os.chdir('..')
     shutil.copy2('target/release/deps/dylib_virtual_display.dll',
                  flutter_build_dir_2)
