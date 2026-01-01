@@ -81,7 +81,6 @@ class ServerModel extends GetxController {
       }
     }
 
-    debugPrint('$connectingStatus, ');
     await updateClientState();
   }
 

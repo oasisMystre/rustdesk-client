@@ -106,7 +106,7 @@ SPEC CHECKSUMS:
   device_info_plus: 5401765fde0b8d062a2f8eb65510fb17e77cf07f
   file_selector_macos: cc3858c981fe6889f364731200d6232dac1d812d
   flutter_custom_cursor: 629957115075c672287bd0fa979d863ccf6024f7
-  FlutterMacOS: 8f6f14fa908a6fb3fba0cd85dbd81ec4b251fb24
+  FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   FMDB: 728731dd336af3936ce00f91d9d8495f5718a0e6
   package_info_plus: 02d7a575e80f194102bef286361c6c326e4c29ce
   path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46

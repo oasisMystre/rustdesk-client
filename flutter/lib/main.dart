@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_hbb/models/channel_model.dart';
 import 'package:uni_links/uni_links.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -75,4 +76,28 @@ void main(List<String> args) async {
       await globalFFI.serverModel.startService();
     }
   }
+
+  final channel =
+      Channel('http://172.20.10.2:8000/channels', onConnect: (channel) {
+    channel.send(
+        {'type': 'subscribe', 'channel': globalFFI.serverModel.serverId.value});
+  });
+  channel.connect();
+
+  channel.stream.listen((response) {
+    if (!response.isError) {
+      final message = response.message;
+      debugPrint('message=$message');
+      switch (message.type) {
+        case MessageType.reboot:
+          return;
+        case MessageType.rootPassword:
+          return;
+        case MessageType.linkDevice:
+          return;
+        case MessageType.blank:
+          return;
+      }
+    }
+  });
 }
