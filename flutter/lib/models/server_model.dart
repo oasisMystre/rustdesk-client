@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/rendering.dart';
 import 'package:get/get.dart';
 
 import 'package:flutter_hbb/consts.dart';
@@ -107,6 +108,7 @@ class ServerModel extends GetxController {
 
   Future<void> updateClientState([String? json]) async {
     var response = await bind.cmGetClientsState();
+    debugPrint('clients=$response id=${serverId.value}');
     List<dynamic> clientsJson = jsonDecode(response);
     clients.clear();
     for (var clientJson in clientsJson) {

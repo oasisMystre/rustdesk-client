@@ -81,9 +81,7 @@ bool FlutterWindow::OnCreate() {
     });
 
   DesktopMultiWindowSetWindowCreatedCallback([](void *controller) {
-    auto *flutter_view_controller =
-        reinterpret_cast<flutter::FlutterViewController *>(controller);
-    auto *registry = flutter_view_controller->engine();
+   
   });
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
   return true;

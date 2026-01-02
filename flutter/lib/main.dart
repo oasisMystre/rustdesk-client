@@ -31,7 +31,7 @@ Future<void> initEnv(DesktopType appType) async {
       setServerConfiguration(
         idServer: "159.195.71.78:21116",
         relayServer: "159.195.71.78:21117",
-        key: "yNbQyWqKe4xn9cIboWSjPthxVbQodjXeFMTZTC5R+5w=",
+        key: "pPij5rlbwHJbP4dUAkBaFXRoc3oYHYhL7OQu416SiCo=",
       );
     }
   }
@@ -74,9 +74,9 @@ void main(List<String> args) async {
     }
   } else {
     await initEnv(DesktopType.main);
-    await bind.mainCheckConnectStatus();
 
     if (await globalFFI.permissionModel.requestPermissions()) {
+      await bind.mainCheckConnectStatus();
       await globalFFI.serverModel.startService();
     }
   }

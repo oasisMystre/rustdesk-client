@@ -27,6 +27,10 @@ dependencies:
   window_manager:
     git:
       url: https://github.com/rustdesk-org/window_manager
+  texture_rgba_renderer:
+    git:
+      url: https://github.com/rustdesk-org/flutter_texture_rgba_renderer
+      ref: 42797e0f03141dc2b585f76c64a13974508058b4
   desktop_multi_window:
     git:
       url: https://github.com/rustdesk-org/rustdesk_desktop_multi_window

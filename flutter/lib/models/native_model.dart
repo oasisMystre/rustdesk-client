@@ -3,6 +3,8 @@ import 'dart:ffi';
 import 'dart:convert';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_hbb/models/ffi_model.dart';
+import 'package:flutter_hbb/utils/platform_channel.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 
@@ -42,8 +44,10 @@ class PlatformFFi extends Event {
 
     _ffiBind = RustdeskImpl(dylib);
 
-    _dir = (await getApplicationDocumentsDirectory()).path;
-
+    if (await canStartService()) {
+      _dir = (await getApplicationDocumentsDirectory()).path;
+    }
+    
     if (isMain) {
       if (Platform.isLinux) {
         await _ffiBind.mainStartDbusServer();
@@ -104,5 +108,25 @@ class PlatformFFi extends Event {
         }
       }();
     });
+  }
+
+  Future<bool> canStartService() async {
+    if (Platform.isMacOS) {
+      final bool value = _ffiBind.mainIsProcessTrusted(prompt: false) &&
+          _ffiBind.mainIsCanInputMonitoring(prompt: false) &&
+          _ffiBind.mainIsCanScreenRecording(prompt: false) &&
+          _ffiBind.mainIsInstalledDaemon(prompt: false);
+
+      if (Platform.isMacOS) {
+        return value &&
+            (await platformChannel.osxCanRecordAudio() ==
+                PermissionAuthorizeType.authorized);
+      }
+      return value;
+    } else if (Platform.isWindows) {
+      return bind.mainIsInstalled();
+    } else {
+      return false;
+    }
   }
 }

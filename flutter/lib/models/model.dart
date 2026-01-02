@@ -27,9 +27,9 @@ class FFIModel extends GetxController {
     sessionId = Uuid().v4obj();
 
     platformFFi = Get.put(PlatformFFi.instance);
-    permissionModel = Get.put(PermissionModel());
     stateModel = Get.put(StateModel(desktopType));
     serverModel = Get.put(ServerModel(WeakReference(this)));
+    permissionModel = Get.put(PermissionModel(WeakReference(this)));
 
     api = Api('http://$baseURL');
     channel = Channel('ws://$baseURL/channels', onConnect: (channel) async {
