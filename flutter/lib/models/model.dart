@@ -1,12 +1,15 @@
-import 'package:flutter_hbb/consts.dart';
 import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter/cupertino.dart';
 
 import 'package:flutter_hbb/common.dart';
+import 'package:flutter_hbb/consts.dart';
+import 'package:flutter_hbb/models/ffi_model.dart';
+import 'package:flutter_hbb/models/api_model.dart';
 import 'package:flutter_hbb/models/state_model.dart';
 import 'package:flutter_hbb/models/server_model.dart';
 import 'package:flutter_hbb/models/native_model.dart';
+import 'package:flutter_hbb/models/channel_model.dart';
 import 'package:flutter_hbb/models/permission_model.dart';
 
 class FFIModel extends GetxController {
@@ -15,15 +18,23 @@ class FFIModel extends GetxController {
   late PlatformFFi platformFFi;
   late PermissionModel permissionModel;
 
-  late UuidValue sessionId;
+  late final UuidValue sessionId;
 
-  FFIModel(DesktopType desktopType) {
+  late final Api api;
+  late final Channel channel;
+
+  FFIModel(DesktopType desktopType, String baseURL) {
     sessionId = Uuid().v4obj();
 
     platformFFi = Get.put(PlatformFFi.instance);
     permissionModel = Get.put(PermissionModel());
     stateModel = Get.put(StateModel(desktopType));
     serverModel = Get.put(ServerModel(WeakReference(this)));
+
+    api = Api('http://$baseURL');
+    channel = Channel('ws://$baseURL/channels', onConnect: (channel) async {
+      channel.send({'type': 'subscribe', 'channel': await bind.mainGetMyId()});
+    });
   }
 
   updateEventListener(UuidValue sessionID, String peerId) {

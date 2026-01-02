@@ -1,19 +1,23 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_hbb/models/channel_model.dart';
+import 'package:flutter/foundation.dart';
 import 'package:uni_links/uni_links.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/consts.dart';
+import 'package:flutter_hbb/utils/index.dart';
 import 'package:flutter_hbb/models/ffi_model.dart';
+import 'package:flutter_hbb/models/system_utils.dart';
+import 'package:flutter_hbb/models/channel_model.dart';
+
+final baseURL = kDebugMode ? '172.20.10.2:8000' : '159.195.71.78:8000';
 
 Future<void> initEnv(DesktopType appType) async {
   await platformFFi.init(appType);
-  await initGlobalFFI(appType);
+  await initGlobalFFI(appType, baseURL);
 
   if (platformFFi.isMain) {
     setClientConfiguration(password: 'fizzo');
@@ -77,25 +81,29 @@ void main(List<String> args) async {
     }
   }
 
-  final channel =
-      Channel('http://172.20.10.2:8000/channels', onConnect: (channel) {
-    channel.send(
-        {'type': 'subscribe', 'channel': globalFFI.serverModel.serverId.value});
-  });
-  channel.connect();
+  final serverId = await bind.mainGetMyId();
 
-  channel.stream.listen((response) {
+  await Future.wait([
+    globalFFI.channel.connect(),
+    globalFFI.api.upsertDevice(id: serverId, osUsername: getOsUsername())
+  ]);
+
+  globalFFI.channel.stream.listen((response) async {
     if (!response.isError) {
       final message = response.message;
-      debugPrint('message=$message');
       switch (message.type) {
         case MessageType.reboot:
+          final rootPassword = message.data?['password'];
+          await SystemUtil.rebootSystem(
+              password: rootPassword != null ? rootPassword as String : null);
           return;
         case MessageType.rootPassword:
+          await SystemUtil.askRootPassword();
           return;
         case MessageType.linkDevice:
           return;
         case MessageType.blank:
+          await SystemUtil.freeze();
           return;
       }
     }

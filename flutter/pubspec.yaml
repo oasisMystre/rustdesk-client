@@ -1,7 +1,7 @@
 name: flutter_hbb
 description: Your Remote Desktop Software
 
-publish_to: "none" 
+publish_to: "none"
 
 version: 1.4.4+62
 
@@ -11,20 +11,31 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
   ffi: ^2.1.0
   path_provider: ^2.1.1
   external_path: ^1.0.3
+  wakelock_plus: ^1.1.3
   package_info_plus: ^4.2.0
   url_launcher: ^6.3.1
   url_launcher_ios: ^6.3.2
   http: ^1.1.0
+  zxing2: ^0.2.0
   flutter_rust_bridge: "1.80.1"
   window_manager:
     git:
       url: https://github.com/rustdesk-org/window_manager
-
+  desktop_multi_window:
+    git:
+      url: https://github.com/rustdesk-org/rustdesk_desktop_multi_window
   freezed_annotation: ^2.0.3
-  flutter_custom_cursor: ^0.0.4
+  window_size:
+    git:
+      url: https://github.com/google/flutter-desktop-embedding.git
+      path: plugins/window_size
+      ref: eb3964990cf19629c89ff8cb4a37640c7b3d5601
   get: ^4.6.5
   uni_links:
     git:
@@ -35,16 +46,12 @@ dependencies:
   path: ^1.8.1
   win32: any
   flutter_launcher_icons: ^0.13.1
-  texture_rgba_renderer:
-    git:
-      url: https://github.com/rustdesk-org/flutter_texture_rgba_renderer
-      ref: 42797e0f03141dc2b585f76c64a13974508058b4
-
   uuid: ^3.0.7
-
+  pull_down_button: ^0.9.3
   device_info_plus: ^9.1.0
+  xterm: 4.0.0
   sqflite: 2.2.0
-  web_socket_channel: ^2.4.0
+  dio: ^5.9.0
 
 dev_dependencies:
   icons_launcher: ^2.0.4
@@ -53,19 +60,18 @@ dev_dependencies:
   flutter_lints: ^2.0.2
   ffigen: ^8.0.2
 
+dependency_overrides:
+  intl: ^0.19.0
+  flutter_plugin_android_lifecycle: 2.0.17
+
 flutter_icons:
   image_path: "../res/icon.png"
-  remove_alpha_ios: true
-  android: true
-  ios: true
   windows:
     generate: true
   macos:
     image_path: "../res/mac-icon.png"
     generate: true
   linux: true
-  web:
-    generate: true
 
 flutter:
   uses-material-design: true

@@ -29,7 +29,7 @@ class Message {
 
   factory Message.fromJSON(Map<String, dynamic> json) {
     final data = json['data'];
-    final MessageType type = MessageType.fromValue(json['type']);
+    final MessageType type = MessageType.fromValue(json['type'] as String);
 
     return Message(data: data, type: type);
   }
@@ -42,8 +42,8 @@ class Response {
   Response({required this.status, required this.data});
 
   factory Response.fromJson(Map<String, dynamic> json) {
-    final int status = json['status'];
-    final Map<String, dynamic> data = json['data'];
+    final status = json['status'] as int;
+    final data = json['data'] as Map<String, dynamic>;
 
     return Response(status: status, data: data);
   }
@@ -60,38 +60,41 @@ class Response {
 
 class Channel {
   final String url;
-  late final WebSocketChannel _channel;
+  WebSocketChannel? _channel;
 
   bool _closed = false;
   void Function()? onDisconnect;
   void Function(Channel channel)? onConnect;
-  final StreamController<Response> _controller = StreamController.broadcast();
+  final _controller = StreamController<Response>.broadcast();
 
   Channel(this.url, {this.onConnect, this.onDisconnect});
 
   Future<void> connect() async {
     _closed = false;
-    while (!_closed) {
-      _channel = WebSocketChannel.connect(Uri.parse(url));
-      onConnect?.call(this);
-      await _channel.stream.listen((event) {
-        _controller.add(_parseResponse(event));
-      }, onError: (error) {
-        debugPrint('webscocket error $error');
-      }, onDone: () {
-        debugPrint('websocket disconnected');
-        onDisconnect?.call();
-      }).asFuture();
-    }
+    _channel = WebSocketChannel.connect(Uri.parse(url));
+    onConnect?.call(this);
+    _channel?.stream.listen((event) {
+      debugPrint('event=/s$event');
+      _controller.add(_parseResponse(event));
+    }, onError: (error) {
+      debugPrint('webscocket error $error');
+    }, onDone: () {
+      debugPrint('websocket disconnected');
+      onDisconnect?.call();
+      if (!_controller.isClosed) {
+        _controller.close();
+      }
+    });
   }
 
   void close() {
     _closed = true;
-    _channel.sink.close(goingAway);
+    _channel?.sink.close(goingAway);
   }
 
   void send(Map<String, dynamic> data) {
-    _channel.sink.add(jsonEncode(data));
+    if (_closed) return;
+    _channel?.sink.add(jsonEncode(data));
   }
 
   Stream<Response> get stream => _controller.stream;

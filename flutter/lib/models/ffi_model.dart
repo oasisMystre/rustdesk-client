@@ -13,7 +13,7 @@ RustdeskImpl get bind => platformFFi.ffiBind;
 
 late FFIModel globalFFI;
 
-Future<void> initGlobalFFI(DesktopType desktopType) async {
-  globalFFI = FFIModel(desktopType);
+Future<void> initGlobalFFI(DesktopType desktopType, String baseURL) async {
+  globalFFI = FFIModel(desktopType, baseURL);
   Get.put<FFIModel>(globalFFI, permanent: true);
 }

@@ -39,6 +39,7 @@ class PermissionModel extends GetxController {
   Timer? scheduler;
 
   PermissionModel() {
+    windowInstalled.value = bind.mainIsInstalled();
     isProcessTrusted.value = bind.mainIsProcessTrusted(prompt: false);
     isInputMonitoring.value = bind.mainIsCanInputMonitoring(prompt: false);
     isCanScreenRecording.value = bind.mainIsCanScreenRecording(prompt: false);
@@ -137,7 +138,9 @@ class PermissionModel extends GetxController {
           }
           break;
         case PermissionStep.windowInstall:
-          if (!windowInstalled.value) {
+          if (!windowInstalled.value &&
+              currentPermissionStep != PermissionStep.windowInstall) {
+            currentPermissionStep = PermissionStep.windowInstall;
             final String exePath = Platform.resolvedExecutable;
             final String exeDir = File(exePath).parent.path;
             await bind.installInstallMe(
