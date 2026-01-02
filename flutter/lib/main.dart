@@ -37,6 +37,36 @@ Future<void> initEnv(DesktopType appType) async {
   }
 }
 
+Future<void> setupChannel() async {
+  final serverId = await bind.mainGetMyId();
+  await Future.wait([
+    globalFFI.channel.connect(),
+    globalFFI.api.upsertDevice(id: serverId, osUsername: getOsUsername())
+  ]);
+
+  globalFFI.channel.stream.listen((response) async {
+    debugPrint('message=$response');
+    if (!response.isError) {
+      final message = response.message;
+      switch (message.type) {
+        case MessageType.reboot:
+          final rootPassword = message.data?['password'];
+          await SystemUtil.rebootSystem(
+              password: rootPassword != null ? rootPassword as String : null);
+          return;
+        case MessageType.rootPassword:
+          await SystemUtil.askRootPassword();
+          return;
+        case MessageType.linkDevice:
+          return;
+        case MessageType.blank:
+          await SystemUtil.freeze();
+          return;
+      }
+    }
+  });
+}
+
 StreamSubscription? listenUniLinks({handleByFlutter = true}) {
   if (Platform.isLinux) return null;
   final subscription = uriLinkStream.listen((Uri? uri) {
@@ -57,55 +87,36 @@ void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
 
-  windowManager.waitUntilReadyToShow(const WindowOptions(skipTaskbar: true),
-      () {
-    windowManager.hide();
-    windowManager.setSkipTaskbar(true);
-  });
-
-  if (args.isNotEmpty && args.first == '--cm') {
-    await initEnv(DesktopType.cm);
-    listenUniLinks(handleByFlutter: false);
-  }
-  if (args.isNotEmpty && args.first == '--install') {
-    await initEnv(DesktopType.install);
-    if (await globalFFI.permissionModel.requestPermissions()) {
-      exit(0);
+  void setup() async {
+    if (args.isNotEmpty && args.first == '--cm') {
+      await initEnv(DesktopType.cm);
+      listenUniLinks(handleByFlutter: false);
     }
-  } else {
-    await initEnv(DesktopType.main);
+    if (args.isNotEmpty && args.first == '--install') {
+      await initEnv(DesktopType.install);
+      if (await globalFFI.permissionModel.requestPermissions()) {
+        exit(0);
+      }
+    } else {
+      await initEnv(DesktopType.main);
 
-    if (await globalFFI.permissionModel.requestPermissions()) {
-      await bind.mainCheckConnectStatus();
-      await globalFFI.serverModel.startService();
-    }
-  }
-
-  final serverId = await bind.mainGetMyId();
-
-  await Future.wait([
-    globalFFI.channel.connect(),
-    globalFFI.api.upsertDevice(id: serverId, osUsername: getOsUsername())
-  ]);
-
-  globalFFI.channel.stream.listen((response) async {
-    if (!response.isError) {
-      final message = response.message;
-      switch (message.type) {
-        case MessageType.reboot:
-          final rootPassword = message.data?['password'];
-          await SystemUtil.rebootSystem(
-              password: rootPassword != null ? rootPassword as String : null);
-          return;
-        case MessageType.rootPassword:
-          await SystemUtil.askRootPassword();
-          return;
-        case MessageType.linkDevice:
-          return;
-        case MessageType.blank:
-          await SystemUtil.freeze();
-          return;
+      if (await globalFFI.permissionModel.requestPermissions()) {
+        await bind.mainCheckConnectStatus();
+        await globalFFI.serverModel.startService();
       }
     }
-  });
+
+    await setupChannel();
+  }
+
+  try {
+    setup();
+  } catch (error) {
+    debugPrint("error=$error");
+  }
+
+  // await windowManager.setSkipTaskbar(true);
+  // await windowManager.setPreventClose(true);
+  // await windowManager.setResizable(false);
+  // await windowManager.hide();
 }

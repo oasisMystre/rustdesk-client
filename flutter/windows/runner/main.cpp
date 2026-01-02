@@ -1,20 +1,17 @@
+#include <tchar.h>
+#include <windows.h>
+#include <iostream>
 #include <flutter/dart_project.h>
 #include <flutter/flutter_view_controller.h>
-#include <tchar.h>
 #include <uni_links_desktop/uni_links_desktop_plugin.h>
-#include <windows.h>
 
-#include <algorithm>
-#include <iostream>
-
+#include "utils.h"
 #include "win32_desktop.h"
 #include "flutter_window.h"
-#include "utils.h"
 
 typedef char** (*FUNC_RUSTDESK_CORE_MAIN)(int*);
 typedef void (*FUNC_RUSTDESK_FREE_ARGS)( char**, int);
 typedef int (*FUNC_RUSTDESK_GET_APP_NAME)(wchar_t*, int);
-/// Note: `--server`, `--service` are already handled in [core_main.rs].
 const std::vector<std::string> parameters_white_list = {"--install", "--cm"};
 
 const wchar_t* getWindowClassName();
@@ -44,7 +41,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   }
   std::vector<std::string> command_line_arguments =
       GetCommandLineArguments();
-  // Remove possible trailing whitespace from command line arguments
   for (auto& argument : command_line_arguments) {
     argument.erase(argument.find_last_not_of(" \n\r\t"));
   }
@@ -57,7 +53,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     for (const auto& argument : command_line_arguments) {
       args_str += (argument + " ");
     }
-    // std::cout << "RustDesk [" << args_str << "], core returns false, exiting without launching Flutter app." << std::endl;
     return EXIT_SUCCESS;
   }
   std::vector<std::string> rust_args(c_args, c_args + args_len);
@@ -72,11 +67,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     }
   }
 
-  // Uri links dispatch
   HWND hwnd = ::FindWindowW(getWindowClassName(), app_name.c_str());
   if (hwnd != NULL) {
-    // Allow multiple flutter instances when being executed by parameters
-    // contained in whitelists.
     bool allow_multiple_instances = false;
     for (auto& whitelist_param : parameters_white_list) {
       allow_multiple_instances =
@@ -87,14 +79,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     }
     if (!allow_multiple_instances) {
       if (!command_line_arguments.empty()) {
-        // Dispatch command line arguments
         DispatchToUniLinksDesktop(hwnd);
-      } else {
-        // Not called with arguments, or just open the app shortcut on desktop.
-        // So we just show the main window instead.
-        ::ShowWindow(hwnd, SW_NORMAL);
-        ::SetForegroundWindow(hwnd);
-      }
+       } 
+      // else {
+      //   ::ShowWindow(hwnd, SW_NORMAL);
+      //   ::SetForegroundWindow(hwnd);
+      // }
       return EXIT_FAILURE;
     }
   }
@@ -151,9 +141,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   } else {
     window_title = app_name;
   }
-  if (!window.CreateAndShow(window_title, origin, size, !is_cm_page)) {
+  bool window_ok = window.CreateAndShow(window_title, origin, size, false);
+  if (!window_ok) {
+      DWORD err = GetLastError();
+      std::cerr << "CreateAndShow failed. GetLastError=" << err << std::endl;
       return EXIT_FAILURE;
   }
+
   window.SetQuitOnClose(true);
 
   ::MSG msg;

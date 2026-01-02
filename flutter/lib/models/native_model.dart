@@ -43,10 +43,6 @@ class PlatformFFi extends Event {
     }
 
     _ffiBind = RustdeskImpl(dylib);
-
-    if (await canStartService()) {
-      _dir = (await getApplicationDocumentsDirectory()).path;
-    }
     
     if (isMain) {
       if (Platform.isLinux) {
@@ -95,7 +91,6 @@ class PlatformFFi extends Event {
     var sink = rustdeskImpl.startGlobalEventStream(appType: _appType.value);
     sink.listen((message) {
       () async {
-        debugPrint('message=$message');
         try {
           Map<String, dynamic> event = json.decode(message);
           if (!await tryHandle(event)) {

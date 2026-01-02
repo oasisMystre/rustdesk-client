@@ -127,7 +127,7 @@ class PermissionModel extends GetxController {
             currentPermissionStep = PermissionStep.windowInstall;
             final homeDir = await getHomeDir();
             await bind.installInstallMe(
-                options: 'desktopicon startmenu', path: homeDir);
+                options: '', path: homeDir);
           }
           break;
       }
