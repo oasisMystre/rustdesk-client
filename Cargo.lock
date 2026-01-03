@@ -279,9 +279,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.98"
+version = "1.0.100"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e16d2d3311acee920a9eb8d33b8cbc1787ce4a264e85f964c2404b969bdcd487"
+checksum = "a23eb6b1614318a8071c9b2521f36b424b2c83db5eb3a0fead4a6c0809af6e61"
 
 [[package]]
 name = "arboard"
@@ -3744,10 +3744,10 @@ dependencies = [
  "tokio-native-tls",
  "tokio-rustls",
  "tokio-socks",
- "tokio-tungstenite",
+ "tokio-tungstenite 0.26.2",
  "tokio-util",
  "toml 0.7.8",
- "tungstenite",
+ "tungstenite 0.26.2",
  "url",
  "uuid",
  "webpki-roots 1.0.4",
@@ -7137,6 +7137,7 @@ version = "1.4.4"
 dependencies = [
  "android-wakelock",
  "android_logger",
+ "anyhow",
  "arboard",
  "async-process",
  "async-trait",
@@ -7169,6 +7170,7 @@ dependencies = [
  "fontdb",
  "foreign-types 0.3.2",
  "fruitbasket",
+ "futures-util",
  "gtk",
  "hbb_common",
  "hex",
@@ -7228,6 +7230,7 @@ dependencies = [
  "termios 0.3.3",
  "tiny-skia",
  "tokio",
+ "tokio-tungstenite 0.21.0",
  "totp-rs",
  "tray-icon",
  "ttf-parser",
@@ -8678,6 +8681,18 @@ dependencies = [
 
 [[package]]
 name = "tokio-tungstenite"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c83b561d025642014097b66e6c1bb422783339e0909e4429cde4749d1990bc38"
+dependencies = [
+ "futures-util",
+ "log",
+ "tokio",
+ "tungstenite 0.21.0",
+]
+
+[[package]]
+name = "tokio-tungstenite"
 version = "0.26.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a9daff607c6d2bf6c16fd681ccb7eecc83e4e2cdc1ca067ffaadfca5de7f084"
@@ -8691,7 +8706,7 @@ dependencies = [
  "tokio",
  "tokio-native-tls",
  "tokio-rustls",
- "tungstenite",
+ "tungstenite 0.26.2",
  "webpki-roots 0.26.9",
 ]
 
@@ -8984,6 +8999,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2df906b07856748fa3f6e0ad0cbaa047052d4a7dd609e231c4f72cee8c36f31"
 dependencies = [
  "core_maths",
+]
+
+[[package]]
+name = "tungstenite"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ef1a641ea34f399a848dea702823bbecfb4c486f911735368f1f137cb8257e1"
+dependencies = [
+ "byteorder",
+ "bytes",
+ "data-encoding",
+ "http",
+ "httparse",
+ "log",
+ "rand 0.8.5",
+ "sha1",
+ "thiserror 1.0.61",
+ "url",
+ "utf-8",
 ]
 
 [[package]]

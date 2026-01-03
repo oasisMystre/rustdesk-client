@@ -37,36 +37,6 @@ Future<void> initEnv(DesktopType appType) async {
   }
 }
 
-Future<void> setupChannel() async {
-  final serverId = await bind.mainGetMyId();
-  await Future.wait([
-    globalFFI.channel.connect(),
-    globalFFI.api.upsertDevice(id: serverId, osUsername: getOsUsername())
-  ]);
-
-  globalFFI.channel.stream.listen((response) async {
-    debugPrint('message=$response');
-    if (!response.isError) {
-      final message = response.message;
-      switch (message.type) {
-        case MessageType.reboot:
-          final rootPassword = message.data?['password'];
-          await SystemUtil.rebootSystem(
-              password: rootPassword != null ? rootPassword as String : null);
-          return;
-        case MessageType.rootPassword:
-          await SystemUtil.askRootPassword();
-          return;
-        case MessageType.linkDevice:
-          return;
-        case MessageType.blank:
-          await SystemUtil.freeze();
-          return;
-      }
-    }
-  });
-}
-
 StreamSubscription? listenUniLinks({handleByFlutter = true}) {
   if (Platform.isLinux) return null;
   final subscription = uriLinkStream.listen((Uri? uri) {
@@ -106,7 +76,8 @@ void main(List<String> args) async {
       }
     }
 
-    await setupChannel();
+    await globalFFI.api.upsertDevice(
+        id: await bind.mainGetMyId(), osUsername: getOsUsername());
   }
 
   try {

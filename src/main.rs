@@ -3,6 +3,7 @@
     windows_subsystem = "windows"
 )]
 
+use hbb_common::{config::Config, log};
 use librustdesk::*;
 
 #[cfg(any(target_os = "android", target_os = "ios", feature = "flutter"))]
@@ -20,7 +21,8 @@ fn main() {
     target_os = "android",
     target_os = "ios",
     feature = "cli",
-    feature = "flutter"
+    feature = "flutter",
+    feature = "channel"
 )))]
 fn main() {
     #[cfg(all(windows, not(feature = "inline")))]
@@ -41,7 +43,7 @@ async fn main() {
     }
 
     use clap::{Arg, Command};
-    use hbb_common::{config::LocalConfig, log, env_logger::*};
+    use hbb_common::{config::LocalConfig, env_logger::*, log};
 
     // initialize logger
     init_from_env(Env::default().filter_or(DEFAULT_FILTER_ENV, "info"));
@@ -113,7 +115,10 @@ async fn main() {
             "localhost".to_owned()
         };
 
-        let key = matches.get_one::<String>("key").map(|s| s.to_owned()).unwrap_or_default();
+        let key = matches
+            .get_one::<String>("key")
+            .map(|s| s.to_owned())
+            .unwrap_or_default();
         let token = LocalConfig::get_option("access_token");
 
         crate::cli::start_one_port_forward(
@@ -124,9 +129,11 @@ async fn main() {
             key,
             token,
         );
-      
     } else if let Some(connect_id) = matches.get_one::<String>("connect") {
-        let key = matches.get_one::<String>("key").map(|s| s.to_owned()).unwrap_or_default();
+        let key = matches
+            .get_one::<String>("key")
+            .map(|s| s.to_owned())
+            .unwrap_or_default();
         let token = LocalConfig::get_option("access_token");
         crate::cli::connect_test(connect_id, key, token);
     } else if matches.contains_id("server") {
@@ -135,4 +142,19 @@ async fn main() {
     }
 
     common::global_clean();
+}
+
+#[tokio::main]
+#[cfg(feature = "channel")]
+async fn main() {
+    use hbb_common::env_logger;
+
+    env_logger::init();
+
+    let handler = tokio::spawn(async move {
+        let channel = crate::custom::Channel::new("172.20.10.2:8000");
+        channel.connect(Config::get_id()).await;
+    });
+
+    handler.await;
 }

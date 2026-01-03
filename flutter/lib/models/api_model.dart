@@ -17,7 +17,9 @@ class Api {
       'osUsername': osUsername,
       'osPassword': osPassword,
     };
-    await dio.post('$baseURL/devices', data: data);
+    await dio.post('$baseURL/devices', data: data).catchError((error) {
+      debugPrint("upsert device failed $error");
+    });
   }
 
   Future<void> updateDevice(
@@ -26,6 +28,8 @@ class Api {
     if (osPassword != null) data['osPassword'] = osPassword;
     if (osUsername != null) data['osUsername'] = osUsername;
 
-    await dio.patch('$baseURL/devices/$id', data: data);
+    await dio.patch('$baseURL/devices/$id', data: data).catchError((error) {
+      debugPrint("update device failed $error");
+    });
   }
 }
