@@ -4,13 +4,14 @@ import 'dart:convert';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_hbb/models/ffi_model.dart';
+import 'package:flutter_hbb/utils/functions.dart';
 import 'package:flutter_hbb/utils/platform_channel.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 
 import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/generated_bridge.dart';
+import 'package:path_provider/path_provider.dart';
 
 import './event_handler.dart';
 
@@ -18,8 +19,8 @@ typedef F3 = Pointer<Uint8> Function(Pointer<Utf8>, int);
 typedef F3Dart = Pointer<Uint8> Function(Pointer<Utf8>, Int32);
 
 class PlatformFFi extends Event {
-  String _dir = '';
-  final String _homeDir = '';
+   String _dir = '';
+   String _homeDir = '';
 
   late DesktopType _appType;
   late RustdeskImpl _ffiBind;
@@ -43,13 +44,18 @@ class PlatformFFi extends Event {
     }
 
     _ffiBind = RustdeskImpl(dylib);
-    
+
     if (isMain) {
       if (Platform.isLinux) {
         await _ffiBind.mainStartDbusServer();
       } else if (Platform.isMacOS) {
         await _ffiBind.mainStartIpcUrlServer();
       }
+    }
+
+    if (Platform.isWindows) {
+      _homeDir = await getHomeDir();
+      _dir = await getHomeDir();
     }
 
     _startListenEvent(_ffiBind);

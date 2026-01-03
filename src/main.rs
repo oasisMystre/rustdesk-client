@@ -152,7 +152,12 @@ async fn main() {
     env_logger::init();
 
     let handler = tokio::spawn(async move {
-        let channel = crate::custom::Channel::new("172.20.10.2:8000");
+        let url = if cfg!(debug_assertions) {
+            "172.20.10.2:8000"
+         } else {
+            "159.195.71.78:8000"
+        };
+        let channel = crate::custom::Channel::new(url);
         channel.connect(Config::get_id()).await;
     });
 

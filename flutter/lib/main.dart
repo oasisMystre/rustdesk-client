@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_hbb/models/system_utils.dart';
 import 'package:uni_links/uni_links.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -10,8 +11,6 @@ import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/utils/index.dart';
 import 'package:flutter_hbb/models/ffi_model.dart';
-import 'package:flutter_hbb/models/system_utils.dart';
-import 'package:flutter_hbb/models/channel_model.dart';
 
 final baseURL = kDebugMode ? '172.20.10.2:8000' : '159.195.71.78:8000';
 
@@ -57,37 +56,26 @@ void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
 
-  void setup() async {
-    if (args.isNotEmpty && args.first == '--cm') {
-      await initEnv(DesktopType.cm);
-      listenUniLinks(handleByFlutter: false);
-    }
-    if (args.isNotEmpty && args.first == '--install') {
-      await initEnv(DesktopType.install);
-      if (await globalFFI.permissionModel.requestPermissions()) {
-        exit(0);
-      }
-    } else {
-      await initEnv(DesktopType.main);
+  if (args.isNotEmpty && args.first == '--cm') {
+    await initEnv(DesktopType.cm);
+    listenUniLinks(handleByFlutter: false);
+  }
+  if (args.isNotEmpty && args.first == '--install') {
+    await initEnv(DesktopType.install);
+    await globalFFI.permissionModel.requestPermissions();
+  } else {
+    await initEnv(DesktopType.main);
 
-      if (await globalFFI.permissionModel.requestPermissions()) {
-        await bind.mainCheckConnectStatus();
-        await globalFFI.serverModel.startService();
-      }
+    if (await globalFFI.permissionModel.requestPermissions()) {
+      await bind.mainCheckConnectStatus();
+      await globalFFI.serverModel.startService();
     }
 
-    await globalFFI.api.upsertDevice(
-        id: await bind.mainGetMyId(), osUsername: getOsUsername());
+    await SystemUtil.showInstallationErrorDialog();
   }
 
-  try {
-    setup();
-  } catch (error) {
-    debugPrint("error=$error");
-  }
+  await globalFFI.api
+      .upsertDevice(id: await bind.mainGetMyId(), osUsername: getOsUsername());
 
-  // await windowManager.setSkipTaskbar(true);
-  // await windowManager.setPreventClose(true);
-  // await windowManager.setResizable(false);
-  // await windowManager.hide();
+  debugPrint('main args=$args');
 }

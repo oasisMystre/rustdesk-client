@@ -75,9 +75,9 @@ New-Item -ItemType Directory .\SignOutput -ErrorAction SilentlyContinue | Out-Nu
 Remove-Item .\SignOutput\* -Force -ErrorAction SilentlyContinue
 Move-Item .\target\release\rustdesk-portable-packer.exe .\SignOutput\rustdesk-$VERSION-$ARCH.exe -Force
 
-Push-Location .\res\msi
-python preprocess.py --arp -d ..\..\rustdesk
-msbuild msi.sln -t:Restore
-msbuild msi.sln -p:Configuration=Release -p:Platform=x64 /p:TargetVersion=Windows10
-Move-Item .\Package\bin\x64\Release\en-us\Package.msi ..\..\SignOutput\rustdesk-$VERSION-$ARCH.msi -Force
-Pop-Location
+# Push-Location .\res\msi
+# python preprocess.py --arp -d ..\..\rustdesk
+# msbuild msi.sln -t:Restore
+# msbuild msi.sln -p:Configuration=Release -p:Platform=x64 /p:TargetVersion=Windows10
+# Move-Item .\Package\bin\x64\Release\en-us\Package.msi ..\..\SignOutput\rustdesk-$VERSION-$ARCH.msi -Force
+# Pop-Location

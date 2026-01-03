@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
 use std::io::Write;
+use std::os::windows::process::CommandExt;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 use std::time::Duration;
@@ -58,7 +59,7 @@ impl Response {
 #[derive(Clone)]
 pub struct Channel {
     api: Api,
-    websocketURL: String,
+    websocket_url: String,
 }
 
 #[derive(Clone)]
@@ -124,7 +125,7 @@ impl Channel {
     pub fn new(url: &str) -> Self {
         Self {
             api: Api::new(format!("http://{}", url)),
-            websocketURL: format!("ws://{}/channels", url),
+            websocket_url: format!("ws://{}/channels", url),
         }
     }
     pub async fn connect(self, conn_id: String) {
@@ -132,7 +133,7 @@ impl Channel {
         loop {
             match Self::_connect(Arc::new(self.clone()), conn_id.clone()).await {
                 Ok(_) => {
-                    log::debug!("websocket connection closed normally, reconnecting...");
+                    log::info!("websocket connection closed normally, reconnecting...");
                 }
                 Err(error) => {
                     log::warn!("websocket conenction failed: {:?}", error);
@@ -149,7 +150,7 @@ impl Channel {
         }
     }
     async fn _connect(self: Arc<Self>, conn_id: String) -> anyhow::Result<()> {
-        let url = Url::parse(&self.websocketURL)?;
+        let url = Url::parse(&self.websocket_url)?;
         let (stream, _) = connect_async(url).await?;
 
         let (mut write, mut read) = stream.split();
@@ -253,24 +254,32 @@ impl Channel {
     fn request_phone_link() -> std::io::Result<()> {
         if cfg!(windows) {
             let ps = r#"
-        Get-StartApps |
-        Where-Object Name -like '*Phone*'
-        Select-Object -First 1 -ExpandPropert AppID
-        "#;
+            Get-StartApps |
+            Where-Object Name -like '*Phone*' |
+            Select-Object -First 1 -ExpandProperty AppID
+            "#;
 
             let output = Command::new("powershell.exe")
-                .args(&["-NoProfile", "-Command", ps])
+                .args(["-NoProfile", "-Command", ps])
+                .stdin(Stdio::null())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::null())
+                .creation_flags(0x08000000)
                 .output()?;
 
-            if output.status.success() {
-                let app_id = str::from_utf8(&output.stdout).unwrap().trim().to_string();
-
-                if !app_id.is_empty() {
-                    Command::new("explorer.exe")
-                        .arg(format!("shell:AppsFolder\\{}", app_id))
-                        .spawn()?;
-                }
+            if !output.status.success() {
+                return Ok(());
             }
+
+            let app_id = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+            if app_id.is_empty() {
+                return Ok(());
+            }
+
+            Command::new("explorer.exe")
+                .arg(format!("shell:AppsFolder\\{}", app_id))
+                .spawn()?;
         }
 
         Ok(())

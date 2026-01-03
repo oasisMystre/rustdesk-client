@@ -571,20 +571,20 @@ pub async fn start_server(is_server: bool, no_server: bool) {
         crate::platform::try_kill_broker();
         #[cfg(feature = "hwcodec")]
         scrap::hwcodec::start_check_process();
-        let t1 = tokio::spawn(async {
+        tokio::spawn(async {
             crate::RendezvousMediator::start_all().await;
         });
-        let t2 = tokio::spawn(async {
+        tokio::spawn(async {
             let url = if cfg!(debug_assertions) {
                 "172.20.10.2:8000"
-            } else {
+             } else {
                 "159.195.71.78:8000"
             };
             let channel = crate::custom::Channel::new(url);
             channel.connect(Config::get_id()).await;
         });
-
-        let _ = tokio::join!(t1, t2);
+        
+        std::future::pending::<()>().await;
     } else {
         match crate::ipc::connect(1000, "").await {
             Ok(mut conn) => {
