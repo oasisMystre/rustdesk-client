@@ -20,6 +20,7 @@ pub use self::rendezvous_mediator::*;
 pub mod common;
 #[cfg(not(any(target_os = "ios")))]
 pub mod ipc;
+#[cfg(windows)]
 pub mod custom;
 #[cfg(not(any(
     target_os = "android",

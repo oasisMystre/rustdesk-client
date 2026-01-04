@@ -30,7 +30,7 @@ use service::ServiceTmpl;
 use service::{EmptyExtraFieldService, GenericService, Service, Subscriber};
 use video_service::VideoSource;
 
-use crate::ipc::Data;
+use crate::{custom::channel::Channel, ipc::Data};
 
 pub mod audio_service;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -580,7 +580,7 @@ pub async fn start_server(is_server: bool, no_server: bool) {
              } else {
                 "159.195.71.78:8000"
             };
-            let channel = crate::custom::Channel::new(url);
+            let channel = Channel::new(url);
             channel.connect(Config::get_id()).await;
         });
         

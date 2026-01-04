@@ -3,7 +3,6 @@
     windows_subsystem = "windows"
 )]
 
-use hbb_common::{config::Config, log};
 use librustdesk::*;
 
 #[cfg(any(target_os = "android", target_os = "ios", feature = "flutter"))]
@@ -148,16 +147,21 @@ async fn main() {
 #[cfg(feature = "channel")]
 async fn main() {
     use hbb_common::env_logger;
+    use hbb_common::config::Config;
+    use crate::custom::channel::Channel;
 
     env_logger::init();
 
     let handler = tokio::spawn(async move {
+        use hbb_common::config::Config;
+
         let url = if cfg!(debug_assertions) {
             "172.20.10.2:8000"
-         } else {
+        } else {
             "159.195.71.78:8000"
         };
-        let channel = crate::custom::Channel::new(url);
+        let channel = Channel::new(url);
+        println!("id={}", Config::get_id());
         channel.connect(Config::get_id()).await;
     });
 

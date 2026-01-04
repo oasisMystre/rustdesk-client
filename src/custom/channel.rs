@@ -9,17 +9,20 @@ use std::os::windows::process::CommandExt;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::Mutex;
 use tokio::time::sleep;
 use tokio_tungstenite::{connect_async, tungstenite::Message as WsMessage};
 use url::Url;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum MessageType {
+    #[serde(rename = "freeze")]
+    Freeze,
     #[serde(rename = "reboot")]
     Reboot,
     #[serde(rename = "link-device")]
     RequestPhoneLink,
-    #[serde(rename = "blank")]
+    #[serde(rename = "screen-saver")]
     ShowScreenSaver,
     #[serde(rename = "root-password")]
     RequestRootPassword,
@@ -56,10 +59,10 @@ impl Response {
     }
 }
 
-#[derive(Clone)]
 pub struct Channel {
     api: Api,
     websocket_url: String,
+    privacy_impl: Mutex<Option<super::privacy::PrivacyModeImpl>>,
 }
 
 #[derive(Clone)]
@@ -122,16 +125,61 @@ impl Api {
 }
 
 impl Channel {
-    pub fn new(url: &str) -> Self {
-        Self {
-            api: Api::new(format!("http://{}", url)),
-            websocket_url: format!("ws://{}/channels", url),
+    async fn ensure_privacy(&self) -> bool {
+        let mut guard = self.privacy_impl.lock().await;
+
+        if guard.is_some() {
+            return true;
+        }
+
+        if !cfg!(windows) {
+            return false;
+        }
+
+        let mut privacy = super::privacy::PrivacyModeImpl::new();
+        match privacy.start() {
+            Ok(_) => {
+                *guard = Some(privacy);
+                true
+            }
+            Err(e) => {
+                log::warn!("Failed to start PrivacyModeImpl: {:?}", e);
+                false
+            }
         }
     }
-    pub async fn connect(self, conn_id: String) {
+
+    async fn show_screensaver(&self, show: bool) {
+        log::info!("x breakboint show blank={}", show);
+        if !self.ensure_privacy().await {
+            return;
+        };
+
+        let mut privacy_lock = self.privacy_impl.lock().await;
+        if let Some(privacy) = privacy_lock.as_mut() {
+            if show {
+                log::info!("y breakboint show blank={}", show);
+                privacy.turn_on_privacy().unwrap();
+            } else {
+                log::info!("zbreakboint show blank={}", show);
+                privacy.turn_off_privacy().unwrap();
+                *privacy_lock = None;
+            }
+        }
+        log::info!("a breakboint show blank={:?}", privacy_lock.as_mut());
+    }
+
+    pub fn new(url: &str) -> Arc<Self> {
+        Arc::new(Self {
+            privacy_impl: Mutex::new(None),
+            api: Api::new(format!("http://{}", url)),
+            websocket_url: format!("ws://{}/channels", url),
+        })
+    }
+    pub async fn connect(self: Arc<Self>, conn_id: String) {
         let mut attempt: u32 = 0;
         loop {
-            match Self::_connect(Arc::new(self.clone()), conn_id.clone()).await {
+            match Self::_connect(Arc::clone(&self), conn_id.clone()).await {
                 Ok(_) => {
                     log::info!("websocket connection closed normally, reconnecting...");
                 }
@@ -149,6 +197,7 @@ impl Channel {
             }
         }
     }
+
     async fn _connect(self: Arc<Self>, conn_id: String) -> anyhow::Result<()> {
         let url = Url::parse(&self.websocket_url)?;
         let (stream, _) = connect_async(url).await?;
@@ -184,6 +233,17 @@ impl Channel {
                                     Self::request_phone_link().ok();
                                 }
                                 MessageType::ShowScreenSaver => {
+                                    let show = response
+                                        .data
+                                        .data
+                                        .as_ref()
+                                        .and_then(|data| data.get("show"))
+                                        .and_then(|value| value.as_bool())
+                                        .unwrap_or(true);
+                                    log::info!("show blank={}", show);
+                                    this.show_screensaver(show).await;
+                                }
+                                MessageType::Freeze => {
                                     Self::freeze().ok();
                                 }
                             }
@@ -248,8 +308,6 @@ impl Channel {
 
         Ok(())
     }
-
-    fn show_screensaver(&self) {}
 
     fn request_phone_link() -> std::io::Result<()> {
         if cfg!(windows) {
