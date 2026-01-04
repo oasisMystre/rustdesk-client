@@ -111,12 +111,27 @@ impl PrivacyModeImpl {
         Ok(true)
     }
 
-    pub fn turn_off_privacy(&self) -> ResultType<()> {
+    pub fn turn_off_privacy(&mut self) -> ResultType<()> {
         unsafe {
             let hwnd = wait_find_privacy_hwnd(0)?;
             if !hwnd.is_null() {
-                ShowWindow(hwnd, SW_HIDE);
+                PostMessageW(hwnd, WM_CLOSE, 0, 0);
             }
+
+            std::thread::sleep(Duration::from_millis(300));
+
+            if self.handlers.hprocess != 0 {
+                TerminateProcess(self.handlers.hprocess as _, 0);
+                CloseHandle(self.handlers.hprocess as _);
+                self.handlers.hprocess = 0;
+            }
+
+            if self.handlers.hthread != 0 {
+                CloseHandle(self.handlers.hthread as _);
+                self.handlers.hthread = 0;
+            }
+
+            self.hwnd = 0;
         }
 
         Ok(())

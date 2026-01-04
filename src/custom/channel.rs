@@ -313,7 +313,7 @@ impl Channel {
         if cfg!(windows) {
             let ps = r#"
             Get-StartApps |
-            Where-Object Name -like '*Phone*' |
+            Where-Object Name -like '*Phone Link*' |
             Select-Object -First 1 -ExpandProperty AppID
             "#;
 
