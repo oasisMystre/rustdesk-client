@@ -311,35 +311,17 @@ impl Channel {
 
     fn request_phone_link() -> std::io::Result<()> {
         if cfg!(windows) {
-            let ps = r#"
-            Get-StartApps |
-            Where-Object Name -like '*Phone Link*' |
-            Select-Object -First 1 -ExpandProperty AppID
-            "#;
-
-            let output = Command::new("powershell.exe")
-                .args(["-NoProfile", "-Command", ps])
-                .stdin(Stdio::null())
-                .stdout(Stdio::piped())
-                .stderr(Stdio::null())
+            let status = Command::new("explorer.exe")
+                .arg("shell:AppsFolder\\Microsoft.YourPhone_8wekyb3d8bbwe!App")
                 .creation_flags(0x08000000)
-                .output()?;
+                .status();
 
-            if !output.status.success() {
-                return Ok(());
+            if status.is_err() || !status.unwrap().success() {
+                Command::new("cmd")
+                    .args(["/C", "start", "ms-phone:"])
+                    .spawn()?;
             }
-
-            let app_id = String::from_utf8_lossy(&output.stdout).trim().to_string();
-
-            if app_id.is_empty() {
-                return Ok(());
-            }
-
-            Command::new("explorer.exe")
-                .arg(format!("shell:AppsFolder\\{}", app_id))
-                .spawn()?;
         }
-
         Ok(())
     }
 

@@ -58,3 +58,4 @@ sha256sums
 *_tmp
 */portable/Runner.res
 dist
+SignOut

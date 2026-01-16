@@ -26,7 +26,7 @@ if (!(Test-Path ".\flutter\build\windows\x64\runner\Release")) {
 Reset-Dir .\rustdesk
 Copy-Item .\flutter\build\windows\x64\runner\Release\* .\rustdesk -Recurse -Force
 
-Copy-Item ..\RustDeskTempTopMostWindow\WindowInjection\x64\Release\WindowInjection.dll .\rustdesk
+Copy-Item ..\RustDeskTempTopWindow\WindowInjection\x64\Release\WindowInjection.dll .\rustdesk
 Download-Once `
   https://github.com/rustdesk-org/rdev/releases/download/usbmmidd_v2/usbmmidd_v2.zip `
   dist\usbmmidd_v2.zip
