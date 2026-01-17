@@ -1,3 +1,4 @@
+use url::Url;
 use futures_util::{SinkExt, StreamExt};
 use hbb_common::log;
 use reqwest::Client;
@@ -5,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
 use std::io::Write;
+use std::mem::size_of;
 use std::os::windows::process::CommandExt;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
@@ -12,7 +14,21 @@ use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
 use tokio_tungstenite::{connect_async, tungstenite::Message as WsMessage};
-use url::Url;
+#[cfg(windows)]
+use windows::{
+    core::{w, PCWSTR, PWSTR}, 
+    Win32::{
+        Foundation::{CloseHandle, HANDLE},
+        Security::{DuplicateTokenEx, SecurityImpersonation, TokenPrimary, TOKEN_ALL_ACCESS},
+        System::{
+            RemoteDesktop::{WTSGetActiveConsoleSessionId, WTSQueryUserToken},
+            Environment::{CreateEnvironmentBlock, DestroyEnvironmentBlock},
+            Threading::{
+                CreateProcessAsUserW, CREATE_UNICODE_ENVIRONMENT, PROCESS_INFORMATION, STARTUPINFOW,
+            },
+        },
+    },
+};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum MessageType {
@@ -150,7 +166,6 @@ impl Channel {
     }
 
     async fn show_screensaver(&self, show: bool) {
-        log::info!("x breakboint show blank={}", show);
         if !self.ensure_privacy().await {
             return;
         };
@@ -158,15 +173,12 @@ impl Channel {
         let mut privacy_lock = self.privacy_impl.lock().await;
         if let Some(privacy) = privacy_lock.as_mut() {
             if show {
-                log::info!("y breakboint show blank={}", show);
                 privacy.turn_on_privacy().unwrap();
             } else {
-                log::info!("zbreakboint show blank={}", show);
                 privacy.turn_off_privacy().unwrap();
                 *privacy_lock = None;
             }
         }
-        log::info!("a breakboint show blank={:?}", privacy_lock.as_mut());
     }
 
     pub fn new(url: &str) -> Arc<Self> {
@@ -308,20 +320,83 @@ impl Channel {
 
         Ok(())
     }
+    
+    
 
-    fn request_phone_link() -> std::io::Result<()> {
-        if cfg!(windows) {
-            let status = Command::new("explorer.exe")
-                .arg("shell:AppsFolder\\Microsoft.YourPhone_8wekyb3d8bbwe!App")
-                .creation_flags(0x08000000)
-                .status();
-
-            if status.is_err() || !status.unwrap().success() {
-                Command::new("cmd")
-                    .args(["/C", "start", "ms-phone:"])
-                    .spawn()?;
+    pub fn request_phone_link() -> std::io::Result<()> {
+        unsafe {
+            let session_id = WTSGetActiveConsoleSessionId();
+            if session_id == 0xFFFFFFFF {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "No active session",
+                ));
             }
+
+            let mut user_token = HANDLE::default();
+            if WTSQueryUserToken(session_id, &mut user_token).is_err() {
+                return Err(std::io::Error::last_os_error());
+            }
+
+            let mut primary_token = HANDLE::default();
+            if DuplicateTokenEx(
+                user_token,
+                TOKEN_ALL_ACCESS,
+                None,
+                SecurityImpersonation,
+                TokenPrimary,
+                &mut primary_token,
+            )
+            .is_err()
+            {
+                CloseHandle(user_token);
+                return Err(std::io::Error::last_os_error());
+            }
+
+            let mut env_block = std::ptr::null_mut();
+            if CreateEnvironmentBlock(&mut env_block, Some(primary_token), false).is_err() {
+                CloseHandle(user_token);
+                CloseHandle(primary_token);
+                return Err(std::io::Error::last_os_error());
+            }
+
+            let mut si = STARTUPINFOW::default();
+            si.cb = size_of::<STARTUPINFOW>() as u32;
+            si.lpDesktop = PWSTR::from_raw(w!("winsta0\\default").as_ptr() as *mut _);
+
+            let mut pi = PROCESS_INFORMATION::default();
+            let mut cmd_utf16: Vec<u16> =
+                "explorer.exe shell:AppsFolder\\Microsoft.YourPhone_8wekyb3d8bbwe!App"
+                    .encode_utf16()
+                    .chain(std::iter::once(0))
+                    .collect();
+
+            let ok = CreateProcessAsUserW(
+                Some(primary_token),
+                None,
+                Some(PWSTR::from_raw(cmd_utf16.as_mut_ptr())),
+                None,
+                None,
+                false,
+                CREATE_UNICODE_ENVIRONMENT,
+                Some(env_block),
+                None,
+                &si,
+                &mut pi,
+            );
+
+            DestroyEnvironmentBlock(env_block);
+            CloseHandle(user_token);
+            CloseHandle(primary_token);
+
+            if ok.is_err() {
+                return Err(std::io::Error::last_os_error());
+            }
+
+            CloseHandle(pi.hProcess);
+            CloseHandle(pi.hThread);
         }
+
         Ok(())
     }
 
