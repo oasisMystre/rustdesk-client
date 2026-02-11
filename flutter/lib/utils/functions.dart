@@ -34,7 +34,29 @@ Future<String> getHomeDir() async {
     home = File(exePath).parent.path.split('\\').sublist(0, 3).join('\\');
   }
 
-  return join(home, await bind.mainGetAppName());
+  return join('C:\\ProgramData', await bind.mainGetAppName());
+}
+
+Future<String> getAppDataDir() async {
+  String? appData;
+
+  if (Platform.isWindows) {
+    appData = Platform.environment['APPDATA'];
+
+    if (appData == null) {
+      final userProfile = Platform.environment['USERPROFILE'];
+      if (userProfile != null) {
+        appData = join(userProfile, 'AppData', 'Roaming');
+      } else {
+        final exePath = Platform.resolvedExecutable;
+        appData = File(exePath).parent.path;
+      }
+    }
+  } else {
+    appData = Platform.environment['HOME'] ?? '/tmp';
+  }
+
+  return join(appData, await bind.mainGetAppName());
 }
 
 String getOsUsername() {

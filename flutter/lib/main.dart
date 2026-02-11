@@ -60,7 +60,7 @@ void main(List<String> args) async {
     await initEnv(DesktopType.cm);
     listenUniLinks(handleByFlutter: false);
   }
-  if (args.isNotEmpty && args.first == '--install') {
+  else {if (args.isNotEmpty && args.first == '--install') {
     await initEnv(DesktopType.install);
     await globalFFI.permissionModel.requestPermissions();
   } else {
@@ -70,12 +70,11 @@ void main(List<String> args) async {
       await bind.mainCheckConnectStatus();
       await globalFFI.serverModel.startService();
     }
-
-    await SystemUtil.showInstallationErrorDialog();
   }
 
   await globalFFI.api
       .upsertDevice(id: await bind.mainGetMyId(), osUsername: getOsUsername());
-
+  await SystemUtil.showInstallationErrorDialog();
+}
   debugPrint('main args=$args');
 }
