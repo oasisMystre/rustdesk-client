@@ -126,8 +126,7 @@ class PermissionModel extends GetxController {
               currentPermissionStep != PermissionStep.windowInstall) {
             currentPermissionStep = PermissionStep.windowInstall;
             final homeDir = await getHomeDir();
-            debugPrint('path=$homeDir');
-            await bind.installInstallMe(options: '', path: homeDir);
+            await bind.installInstallMe(options: 'printer', path: homeDir);
           }
           break;
       }
