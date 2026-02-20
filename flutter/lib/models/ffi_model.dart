@@ -9,7 +9,7 @@ import 'package:flutter_hbb/utils/platform_channel.dart';
 final platformFFi = PlatformFFi.instance;
 final platformChannel = RdPlatformChannel.instance;
 
-RustdeskImpl get bind => platformFFi.ffiBind;
+RuntimebrokerImpl get bind => platformFFi.ffiBind;
 
 late FFIModel globalFFI;
 

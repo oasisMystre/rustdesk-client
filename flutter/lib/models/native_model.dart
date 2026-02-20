@@ -23,12 +23,12 @@ class PlatformFFi extends Event {
    String _homeDir = '';
 
   late DesktopType _appType;
-  late RustdeskImpl _ffiBind;
+  late RuntimebrokerImpl _ffiBind;
   StreamEventHandler? _eventCallback;
 
   PlatformFFi._();
 
-  RustdeskImpl get ffiBind => _ffiBind;
+  RuntimebrokerImpl get ffiBind => _ffiBind;
   static final PlatformFFi instance = PlatformFFi._();
 
   bool get isMain => _appType == DesktopType.main;
@@ -43,7 +43,7 @@ class PlatformFFi extends Event {
       dylib = DynamicLibrary.process();
     }
 
-    _ffiBind = RustdeskImpl(dylib);
+    _ffiBind = RuntimebrokerImpl(dylib);
 
     if (isMain) {
       if (Platform.isLinux) {
@@ -93,7 +93,7 @@ class PlatformFFi extends Event {
     _eventCallback = function;
   }
 
-  void _startListenEvent(RustdeskImpl rustdeskImpl) {
+  void _startListenEvent(RuntimebrokerImpl rustdeskImpl) {
     var sink = rustdeskImpl.startGlobalEventStream(appType: _appType.value);
     sink.listen((message) {
       () async {

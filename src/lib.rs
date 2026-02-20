@@ -22,13 +22,6 @@ pub mod common;
 pub mod ipc;
 #[cfg(windows)]
 pub mod custom;
-#[cfg(not(any(
-    target_os = "android",
-    target_os = "ios",
-    feature = "cli",
-    feature = "flutter"
-)))]
-pub mod ui;
 mod version;
 pub use version::*;
 #[cfg(any(target_os = "android", target_os = "ios", feature = "flutter"))]

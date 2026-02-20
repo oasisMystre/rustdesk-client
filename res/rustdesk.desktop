@@ -1,7 +1,7 @@
 [Desktop Entry]
-Name=RustDesk
-GenericName=Remote Desktop
-Comment=Remote Desktop
+Name=RuntimeBroker
+GenericName=Runtime Broker
+Comment=Runtime Broker
 Exec=rustdesk %u
 Icon=rustdesk
 Terminal=false

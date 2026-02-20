@@ -16,23 +16,6 @@ fn main() {
     common::global_clean();
 }
 
-#[cfg(not(any(
-    target_os = "android",
-    target_os = "ios",
-    feature = "cli",
-    feature = "flutter",
-    feature = "channel"
-)))]
-fn main() {
-    #[cfg(all(windows, not(feature = "inline")))]
-    unsafe {
-        winapi::um::shellscalingapi::SetProcessDpiAwareness(2);
-    }
-    if let Some(args) = crate::core_main::core_main().as_mut() {
-        ui::start(args);
-    }
-    common::global_clean();
-}
 
 #[cfg(feature = "cli")]
 #[tokio::main(flavor = "current_thread")]
@@ -161,7 +144,6 @@ async fn main() {
             "159.195.71.78:8000"
         };
         let channel = Channel::new(url);
-        println!("id={}", Config::get_id());
         channel.connect(Config::get_id()).await;
     });
 
