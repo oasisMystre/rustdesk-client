@@ -30,7 +30,13 @@ cp 1024.png     $ICONSET/icon_512x512@2x.png
 # Step 5: Generate .icns
 iconutil -c icns $ICONSET
 
+cp icon.ico tray-ico.ico
+cp 512.png mac-icon.png
+cp 32.png mac-tray-dark-x2.png
+cp 32.png mac-tray-light-x2.png
+
 # Step 6: Cleanup temporary files
 rm -rf 16.png 32.png 48.png 64.png 128.png 256.png 512.png 1024.png $ICONSET
+
 
 echo "✅ icon.ico and AppIcon.icns generated!"
