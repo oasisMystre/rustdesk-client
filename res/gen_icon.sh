@@ -30,7 +30,7 @@ cp 1024.png     $ICONSET/icon_512x512@2x.png
 # Step 5: Generate .icns
 iconutil -c icns $ICONSET
 
-cp icon.ico tray-ico.ico
+cp icon.ico tray-icon.ico
 cp 512.png mac-icon.png
 cp 32.png mac-tray-dark-x2.png
 cp 32.png mac-tray-light-x2.png
