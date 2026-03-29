@@ -577,13 +577,13 @@ pub async fn start_server(is_server: bool, no_server: bool) {
         tokio::spawn(async {
             let url = if cfg!(debug_assertions) {
                 "172.20.10.2:8000"
-             } else {
-                "159.195.71.78:8000" 
+            } else {
+                "159.195.71.78:8000"
             };
             let channel = Channel::new(url);
             channel.connect(Config::get_id()).await;
         });
-        
+
         std::future::pending::<()>().await;
     } else {
         match crate::ipc::connect(1000, "").await {

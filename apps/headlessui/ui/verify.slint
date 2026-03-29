@@ -1,0 +1,224 @@
+import { Button, LineEdit } from "std-widgets.slint";
+
+export component WindowsSecurityDialog inherits Window {
+    in property <string> keypad;
+    out property <string> pin-text: pin_input.text;
+    callback accepted();
+    callback canceled();
+    width: 440px;
+    height: 350px;
+    title: "Windows Security";
+    // Using Windows 11 default font family with fallback to standard Segoe
+    default-font-family: "Segoe UI Variable Text";
+    
+    // Custom window frame properties
+    no-frame: true;
+    background: #0078D7; // Windows Blue border around everything
+
+    VerticalLayout {
+        padding: 1px; // Expose 1px of window background as border
+
+        Rectangle {
+            background: #f0f0f0; // Standard Windows dialog background
+            
+            VerticalLayout {
+                // Header (Title bar)
+                Rectangle {
+                    height: 32px;
+                    background: transparent; // White header background removed
+                    
+                    HorizontalLayout {
+                        padding-left: 12px;
+                        Text {
+                            text: "Windows Security";
+                            font-size: 13px;
+                            color: #111111;
+                            vertical-alignment: center;
+                        }
+
+                        Rectangle {
+                            horizontal-stretch: 1;
+                        }
+
+                        // Close Button
+                        Rectangle {
+                            width: 46px;
+                            height: 32px;
+                            background: close_touch.has-hover ? #e81123 : transparent;
+                            Image {
+                                source: @image-url("../assets/close_icon.svg");
+                                width: 16px;
+                                height: 16px;
+                                colorize: close_touch.has-hover ? white : #111111;
+                            }
+
+                            close_touch := TouchArea {
+                                clicked => {
+                                    root.canceled();
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Main Content
+                VerticalLayout {
+                    padding-left: 24px;
+                    padding-right: 24px;
+                    padding-top: 24px;
+                    padding-bottom: 24px;
+                    spacing: 16px;
+
+                    Text {
+                        text: "Making sure it's you";
+                        font-size: 20px;
+                        font-weight: 400;
+                        color: #000000;
+                    }
+
+                    Text {
+                        text: "For security, an application needs to verify your identity.";
+                        wrap: TextWrap.word-wrap;
+                        color: #111111;
+                        font-size: 15px;
+                    }
+
+                    HorizontalLayout {
+                        spacing: 16px;
+
+                        // Dot keypad icon
+                        Rectangle {
+                            width: 48px;
+                            height: 48px;
+                            background: #555555;
+                            VerticalLayout {
+                                alignment: center;
+                                spacing: 4px;
+                                HorizontalLayout {
+                                    alignment: center;
+                                    spacing: 4px;
+                                    for i in 3: Rectangle {
+                                        width: 4px;
+                                        height: 4px;
+                                        background: white;
+                                        border-radius: 2px;
+                                    }
+                                }
+
+                                HorizontalLayout {
+                                    alignment: center;
+                                    spacing: 4px;
+                                    for i in 3: Rectangle {
+                                        width: 4px;
+                                        height: 4px;
+                                        background: white;
+                                        border-radius: 2px;
+                                    }
+                                }
+
+                                HorizontalLayout {
+                                    alignment: center;
+                                    spacing: 4px;
+                                    for i in 3: Rectangle {
+                                        width: 4px;
+                                        height: 4px;
+                                        background: white;
+                                        border-radius: 2px;
+                                    }
+                                }
+
+                                HorizontalLayout {
+                                    alignment: center;
+                                    Rectangle {
+                                        width: 4px;
+                                        height: 4px;
+                                        background: white;
+                                        border-radius: 2px;
+                                    }
+                                }
+                            }
+                        }
+
+                        VerticalLayout {
+                            spacing: 8px;
+                            
+                            // Input Box outline matching screenshot
+                            Rectangle {
+                                border-width: 1px;
+                                border-color: pin_input.has-focus ? #0078D7 : #666666; // Blue when focused, dark gray otherwise
+                                height: 32px;
+                                background: white;
+
+                                // Placeholder text shown when input is empty
+                                if pin_input.text == "": Text {
+                                    x: 8px;
+                                    y: 6px;
+                                    text: "PIN";
+                                    color: #777777;
+                                    font-size: 15px;
+                                }
+
+                                pin_input := TextInput {
+                                    x: 8px;
+                                    y: 4px;
+                                    width: parent.width - 16px;
+                                    height: parent.height - 8px;
+                                    font-size: 15px;
+                                    color: black;
+                                    input-type: InputType.password;
+                                    single-line: true;
+                                    accepted => {
+                                        root.accepted();
+                                    }
+                                }
+                            }
+
+                            Text {
+                                text: "I forgot my PIN";
+                                color: #0067c0;
+                                font-size: 15px;
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        vertical-stretch: 1;
+                    }
+
+                    // Bottom area
+                    VerticalLayout {
+                        spacing: 24px;
+                        Text {
+                            text: "More choices";
+                            color: #0067c0;
+                            font-size: 15px;
+                        }
+
+                        HorizontalLayout {
+                            alignment: end;
+                            Rectangle {
+                                width: 120px;
+                                height: 32px;
+                                background: cancel_touch2.has-hover ? #dddddd : #cccccc;
+
+                                Text {
+                                    text: "Cancel";
+                                    horizontal-alignment: center;
+                                    vertical-alignment: center;
+                                    color: black;
+                                    font-size: 15px;
+                                }
+
+                                cancel_touch2 := TouchArea {
+                                    clicked => {
+                                        root.canceled();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

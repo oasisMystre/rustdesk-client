@@ -41,7 +41,7 @@ impl Session {
             false,
             None,
             None,
-            None
+            None,
         );
         session
     }
@@ -57,7 +57,12 @@ impl Interface for Session {
         match msgtype {
             "input-password" => {
                 self.sender
-                    .send(Data::Login((String::new(), String::new(), self.password.clone(), true)))
+                    .send(Data::Login((
+                        String::new(),
+                        String::new(),
+                        self.password.clone(),
+                        true,
+                    )))
                     .ok();
             }
             "re-input-password" => {
@@ -65,7 +70,8 @@ impl Interface for Session {
                 match rpassword::prompt_password("Enter password: ") {
                     Ok(password) => {
                         // Fixed: Data::Login now expects (os_username, os_password, password, remember)
-                        let login_data = Data::Login((String::new(), String::new(), password, true));
+                        let login_data =
+                            Data::Login((String::new(), String::new(), password, true));
                         self.sender.send(login_data).ok();
                     }
                     Err(e) => {
@@ -121,13 +127,11 @@ impl Interface for Session {
         handle_test_delay(t, peer).await;
     }
 
-   fn get_lch(&self) -> Arc<std::sync::RwLock<client::LoginConfigHandler>>{
-    self.lc.clone()
-   }
+    fn get_lch(&self) -> Arc<std::sync::RwLock<client::LoginConfigHandler>> {
+        self.lc.clone()
+    }
 
-   fn set_multiple_windows_session(&self, _sessions: Vec<WindowsSession>) {
-    
-   }
+    fn set_multiple_windows_session(&self, _sessions: Vec<WindowsSession>) {}
 }
 
 #[tokio::main(flavor = "current_thread")]

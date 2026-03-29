@@ -1154,6 +1154,14 @@ pub fn get_install_options() -> String {
     let subkey = format!(".{}", app_name.to_lowercase());
     let mut opts = HashMap::new();
 
+    let desktop_shortcuts = get_reg_of_hkcr(&subkey, REG_NAME_INSTALL_DESKTOPSHORTCUTS);
+    if let Some(desktop_shortcuts) = desktop_shortcuts {
+        opts.insert(REG_NAME_INSTALL_DESKTOPSHORTCUTS, desktop_shortcuts);
+    }
+    let start_menu_shortcuts = get_reg_of_hkcr(&subkey, REG_NAME_INSTALL_STARTMENUSHORTCUTS);
+    if let Some(start_menu_shortcuts) = start_menu_shortcuts {
+        opts.insert(REG_NAME_INSTALL_STARTMENUSHORTCUTS, start_menu_shortcuts);
+    }
     let printer = get_reg_of_hkcr(&subkey, REG_NAME_INSTALL_PRINTER);
     if let Some(printer) = printer {
         opts.insert(REG_NAME_INSTALL_PRINTER, printer);
@@ -1288,12 +1296,25 @@ fn get_after_install(
     let app_name = crate::get_app_name();
     let ext = app_name.to_lowercase();
 
+    // reg delete HKEY_CURRENT_USER\Software\Classes for
     // https://github.com/rustdesk/rustdesk/commit/f4bdfb6936ae4804fc8ab1cf560db192622ad01a
     // and https://github.com/leanflutter/uni_links_desktop/blob/1b72b0226cec9943ca8a84e244c149773f384e46/lib/src/protocol_registrar_impl_windows.dart#L30
     let hcu = RegKey::predef(HKEY_CURRENT_USER);
     hcu.delete_subkey_all(format!("Software\\Classes\\{}", exe))
         .ok();
 
+    let desktop_shortcuts = reg_value_desktop_shortcuts
+        .map(|v| {
+            format!("reg add HKEY_CLASSES_ROOT\\.{ext} /f /v {REG_NAME_INSTALL_DESKTOPSHORTCUTS} /t REG_SZ /d \"{v}\"")
+        })
+        .unwrap_or_default();
+    let start_menu_shortcuts = reg_value_start_menu_shortcuts
+        .map(|v| {
+            format!(
+                "reg add HKEY_CLASSES_ROOT\\.{ext} /f /v {REG_NAME_INSTALL_STARTMENUSHORTCUTS} /t REG_SZ /d \"{v}\""
+            )
+        })
+        .unwrap_or_default();
     let reg_printer = reg_value_printer
         .map(|v| {
             format!(
@@ -1306,8 +1327,12 @@ fn get_after_install(
         r#"
     chcp 65001
     reg add HKEY_CLASSES_ROOT\\.{ext} /f
+    {desktop_shortcuts}
+    {start_menu_shortcuts}
     {reg_printer}
-
+   
+    reg add HKEY_CLASSES_ROOT\\.{ext}\\DefaultIcon /f
+    reg add HKEY_CLASSES_ROOT\\.{ext}\\DefaultIcon /f /ve /t REG_SZ  /d \"\\\"{exe}\\\",0\"
     reg add HKEY_CLASSES_ROOT\\.{ext}\\shell /f
     reg add HKEY_CLASSES_ROOT\\.{ext}\\shell\\open /f
     reg add HKEY_CLASSES_ROOT\\.{ext}\\shell\\open\\command /f
@@ -1318,12 +1343,12 @@ fn get_after_install(
     reg add HKEY_CLASSES_ROOT\\{ext}\\shell\\open /f
     reg add HKEY_CLASSES_ROOT\\{ext}\\shell\\open\\command /f
     reg add HKEY_CLASSES_ROOT\\{ext}\\shell\\open\\command /f /ve /t REG_SZ /d \"\\\"{exe}\\\" \\\"%%1\\\"\"
-
+   
     reg add HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run /v "{app_name}" /t REG_SZ /d "\"{exe}\" --tray" /f
-
+        
     netsh advfirewall firewall add rule name=\"{app_name} Service\" dir=out action=allow program=\"{exe}\" enable=yes
     netsh advfirewall firewall add rule name=\"{app_name} Service\" dir=in action=allow program=\"{exe}\" enable=yes
-
+   
     {create_service}
     reg add HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System /f /v SoftwareSASGeneration /t REG_DWORD /d 1
     "#,
@@ -1332,6 +1357,7 @@ fn get_after_install(
 }
 
 pub fn install_me(options: &str, path: String, silent: bool, debug: bool) -> ResultType<()> {
+    let uninstall_str = get_uninstall(false, false);
     let mut path = path.trim_end_matches('\\').to_owned();
     let (subkey, _path, start_menu, exe) = get_default_install_info();
     let mut exe = exe;
@@ -1373,9 +1399,48 @@ oLink.Save
     .to_str()
     .unwrap_or("")
     .to_owned();
-
+    // https://superuser.com/questions/392061/how-to-make-a-shortcut-from-cmd
+    let uninstall_shortcut = write_cmds(
+        format!(
+            "
+Set oWS = WScript.CreateObject(\"WScript.Shell\")
+sLinkFile = \"{tmp_path}\\Uninstall {app_name}.lnk\"
+Set oLink = oWS.CreateShortcut(sLinkFile)
+    oLink.TargetPath = \"{exe}\"
+    oLink.Arguments = \"--uninstall\"
+    oLink.IconLocation = \"msiexec.exe\"
+oLink.Save
+        "
+        ),
+        "vbs",
+        "uninstall_shortcut",
+    )?
+    .to_str()
+    .unwrap_or("")
+    .to_owned();
+    let tray_shortcut = get_tray_shortcut(&exe, &tmp_path)?;
+    let mut reg_value_desktop_shortcuts = "0".to_owned();
+    let mut reg_value_start_menu_shortcuts = "0".to_owned();
     let mut reg_value_printer = "0".to_owned();
-
+    let mut shortcuts = Default::default();
+    if options.contains("desktopicon") {
+        shortcuts = format!(
+            "copy /Y \"{}\\{}.lnk\" \"%PUBLIC%\\Desktop\\\"",
+            tmp_path,
+            crate::get_app_name()
+        );
+        reg_value_desktop_shortcuts = "1".to_owned();
+    }
+    if options.contains("startmenu") {
+        shortcuts = format!(
+            "{shortcuts}
+md \"{start_menu}\"
+copy /Y \"{tmp_path}\\{app_name}.lnk\" \"{start_menu}\\\"
+copy /Y \"{tmp_path}\\Uninstall {app_name}.lnk\" \"{start_menu}\\\"
+     "
+        );
+        reg_value_start_menu_shortcuts = "1".to_owned();
+    }
     let install_printer = options.contains("printer") && is_win_10_or_greater();
     if install_printer {
         reg_value_printer = "1".to_owned();
@@ -1383,6 +1448,20 @@ oLink.Save
 
     let meta = std::fs::symlink_metadata(std::env::current_exe()?)?;
     let size = meta.len() / 1024;
+    // https://docs.microsoft.com/zh-cn/windows/win32/msi/uninstall-registry-key?redirectedfrom=MSDNa
+    // https://www.windowscentral.com/how-edit-registry-using-command-prompt-windows-10
+    // https://www.tenforums.com/tutorials/70903-add-remove-allowed-apps-through-windows-firewall-windows-10-a.html
+    // Note: without if exist, the bat may exit in advance on some Windows7 https://github.com/rustdesk/rustdesk/issues/895
+    let dels = format!(
+        "
+if exist \"{mk_shortcut}\" del /f /q \"{mk_shortcut}\"
+if exist \"{uninstall_shortcut}\" del /f /q \"{uninstall_shortcut}\"
+if exist \"{tray_shortcut}\" del /f /q \"{tray_shortcut}\"
+if exist \"{tmp_path}\\{app_name}.lnk\" del /f /q \"{tmp_path}\\{app_name}.lnk\"
+if exist \"{tmp_path}\\Uninstall {app_name}.lnk\" del /f /q \"{tmp_path}\\Uninstall {app_name}.lnk\"
+if exist \"{tmp_path}\\{app_name} Tray.lnk\" del /f /q \"{tmp_path}\\{app_name} Tray.lnk\"
+        "
+    );
     let src_exe = std::env::current_exe()?.to_str().unwrap_or("").to_string();
 
     // potential bug here: if run_cmd cancelled, but config file is changed.
@@ -1391,6 +1470,15 @@ oLink.Save
         Config::set_option("custom-rendezvous-server".into(), lic.host);
         Config::set_option("api-server".into(), lic.api);
     }
+
+    let tray_shortcuts = if config::is_outgoing_only() {
+        "".to_owned()
+    } else {
+        format!("
+cscript \"{tray_shortcut}\"
+copy /Y \"{tmp_path}\\{app_name} Tray.lnk\" \"%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\\"
+")
+    };
 
     let install_remote_printer = if install_printer {
         // No need to use `|| true` here.
@@ -1407,10 +1495,13 @@ oLink.Save
     // New code should be written in a common function.
     let cmds = format!(
         "
+{uninstall_str}
 chcp 65001
 md \"{path}\"
 {copy_exe}
 reg add {subkey} /f
+reg add {subkey} /f /v DisplayIcon /t REG_SZ /d \"{exe}\"
+reg add {subkey} /f /v DisplayName /t REG_SZ /d \"{app_name}\"
 reg add {subkey} /f /v DisplayVersion /t REG_SZ /d \"{version}\"
 reg add {subkey} /f /v Version /t REG_SZ /d \"{version}\"
 reg add {subkey} /f /v BuildDate /t REG_SZ /d \"{build_date}\"
@@ -1419,8 +1510,15 @@ reg add {subkey} /f /v Publisher /t REG_SZ /d \"{app_name}\"
 reg add {subkey} /f /v VersionMajor /t REG_DWORD /d {version_major}
 reg add {subkey} /f /v VersionMinor /t REG_DWORD /d {version_minor}
 reg add {subkey} /f /v VersionBuild /t REG_DWORD /d {version_build}
+reg add {subkey} /f /v UninstallString /t REG_SZ /d \"\\\"{exe}\\\" --uninstall\"
 reg add {subkey} /f /v EstimatedSize /t REG_DWORD /d {size}
 reg add {subkey} /f /v WindowsInstaller /t REG_DWORD /d 0
+cscript \"{mk_shortcut}\"
+cscript \"{uninstall_shortcut}\"
+{tray_shortcuts}
+{shortcuts}
+copy /Y \"{tmp_path}\\Uninstall {app_name}.lnk\" \"{path}\\\"
+{dels}
 {import_config}
 {after_install}
 {install_remote_printer}
@@ -1428,8 +1526,14 @@ reg add {subkey} /f /v WindowsInstaller /t REG_DWORD /d 0
     ",
         version = crate::VERSION.replace("-", "."),
         build_date = crate::BUILD_DATE,
-        after_install = get_after_install(&exe, None, None, Some(reg_value_printer)),
+        after_install = get_after_install(
+            &exe,
+            Some(reg_value_start_menu_shortcuts),
+            Some(reg_value_desktop_shortcuts),
+            Some(reg_value_printer)
+        ),
         sleep = if debug { "timeout 300" } else { "" },
+        dels = if debug { "" } else { &dels },
         copy_exe = copy_exe_cmd(&src_exe, &exe, &path)?,
         import_config = get_import_config(&exe),
     );
@@ -1447,8 +1551,83 @@ pub fn run_after_install() -> ResultType<()> {
     )
 }
 
+pub fn run_before_uninstall() -> ResultType<()> {
+    run_cmds(get_before_uninstall(true), true, "before_install")
+}
+
+fn get_before_uninstall(kill_self: bool) -> String {
+    let app_name = crate::get_app_name();
+    let ext = app_name.to_lowercase();
+    let filter = if kill_self {
+        "".to_string()
+    } else {
+        format!(" /FI \"PID ne {}\"", get_current_pid())
+    };
+    format!(
+        r#"
+    chcp 65001
+    sc stop {app_name}
+    sc delete {app_name}
+    taskkill /F /IM {broker_exe}
+    taskkill /F /IM {app_name}.exe{filter}
+    reg delete HKEY_CLASSES_ROOT\\.{ext} /f
+    reg delete HKEY_CLASSES_ROOT\\{ext} /f
+    reg delete "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run" /v "{app_name}" /f
+    netsh advfirewall firewall delete rule name=\"{app_name} Service\"
+    "#,
+        broker_exe = WIN_TOPMOST_INJECTED_PROCESS_EXE,
+    )
+}
+
+/// Constructs the uninstall command string for the application.
+///
+/// # Parameters
+/// - `kill_self`: The command will kill the process of current app name. If `true`, it will kill
+///   the current process as well. If `false`, it will exclude the current process from the kill
+///   command.
+/// - `uninstall_printer`: If `true`, includes commands to uninstall the remote printer.
+///
+/// # Details
+/// The `uninstall_printer` parameter determines whether the command to uninstall the remote printer
+/// is included in the generated uninstall script. If `uninstall_printer` is `false`, the printer
+/// related command is omitted from the script.
+fn get_uninstall(kill_self: bool, uninstall_printer: bool) -> String {
+    let reg_uninstall_string = get_reg("UninstallString");
+    if reg_uninstall_string.to_lowercase().contains("msiexec.exe") {
+        return reg_uninstall_string;
+    }
+
+    let mut uninstall_cert_cmd = "".to_string();
+    let mut uninstall_printer_cmd = "".to_string();
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(exe_path) = exe.to_str() {
+            uninstall_cert_cmd = format!("\"{}\" --uninstall-cert", exe_path);
+            if uninstall_printer {
+                uninstall_printer_cmd = format!("\"{}\" --uninstall-remote-printer", &exe_path);
+            }
+        }
+    }
+    let (subkey, path, start_menu, _) = get_install_info();
+    format!(
+        "
+    {before_uninstall}
+    {uninstall_printer_cmd}
+    {uninstall_cert_cmd}
+    reg delete {subkey} /f
+    {uninstall_amyuni_idd}
+    if exist \"{path}\" rd /s /q \"{path}\"
+    if exist \"{start_menu}\" rd /s /q \"{start_menu}\"
+    if exist \"%PUBLIC%\\Desktop\\{app_name}.lnk\" del /f /q \"%PUBLIC%\\Desktop\\{app_name}.lnk\"
+    if exist \"%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\{app_name} Tray.lnk\" del /f /q \"%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\{app_name} Tray.lnk\"
+    ",
+        before_uninstall=get_before_uninstall(kill_self),
+        uninstall_amyuni_idd=get_uninstall_amyuni_idd(),
+        app_name = crate::get_app_name(),
+    )
+}
+
 pub fn uninstall_me(kill_self: bool) -> ResultType<()> {
-    run_cmds(String::new(), true, "uninstall")
+    run_cmds(get_uninstall(kill_self, true), true, "uninstall")
 }
 
 fn write_cmds(cmds: String, ext: &str, tip: &str) -> ResultType<std::path::PathBuf> {

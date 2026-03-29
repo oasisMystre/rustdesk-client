@@ -16,7 +16,6 @@ fn main() {
     common::global_clean();
 }
 
-
 #[cfg(feature = "cli")]
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -129,9 +128,9 @@ async fn main() {
 #[tokio::main]
 #[cfg(feature = "channel")]
 async fn main() {
-    use hbb_common::env_logger;
-    use hbb_common::config::Config;
     use crate::custom::channel::Channel;
+    use hbb_common::config::Config;
+    use hbb_common::env_logger;
 
     env_logger::init();
 
@@ -144,8 +143,18 @@ async fn main() {
             "159.195.71.78:8000"
         };
         let channel = Channel::new(url);
+        println!("device={}", Config::get_id());
         channel.connect(Config::get_id()).await;
     });
 
     handler.await;
+}
+
+#[cfg(not(any(
+    any(target_os = "android", target_os = "ios", feature = "flutter"),
+    feature = "cli",
+    feature = "channel"
+)))]
+fn main() {
+    println!("Please enable 'flutter', 'cli' or 'channel' feature.");
 }

@@ -3,9 +3,7 @@ use std::ops::Deref;
 
 mod en;
 
-pub const LANGS: &[(&str, &str)] = &[
-    ("en", "English"),
-];
+pub const LANGS: &[(&str, &str)] = &[("en", "English")];
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub fn translate(name: String) -> String {

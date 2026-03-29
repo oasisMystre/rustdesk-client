@@ -219,8 +219,14 @@ pub fn core_main() -> Option<Vec<String>> {
                     .ok();
                 return None;
             } else if args[0] == "--after-install" {
+                if let Err(err) = platform::run_after_install() {
+                    log::error!("Failed to after-install: {}", err);
+                }
                 return None;
             } else if args[0] == "--before-uninstall" {
+                if let Err(err) = platform::run_before_uninstall() {
+                    log::error!("Failed to before-uninstall: {}", err);
+                }
                 return None;
             } else if args[0] == "--silent-install" {
                 if config::is_disable_installation() {

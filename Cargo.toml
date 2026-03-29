@@ -136,6 +136,9 @@ windows = { version = "0.61", features = [
     "Win32_System_RemoteDesktop",
     "Win32_System_Memory",
     "Win32_System_SystemServices",
+    "Win32_System_Pipes",
+    "Win32_System_IO",
+    "Win32_Storage_FileSystem",
     "Win32_UI_WindowsAndMessaging",
     "Win32_System_Diagnostics",
     "Win32_System_Threading",
@@ -209,7 +212,7 @@ jni = "0.21"
 android-wakelock = { git = "https://github.com/rustdesk-org/android-wakelock" }
 
 [workspace]
-members = ["libs/scrap", "libs/hbb_common", "libs/enigo", "libs/clipboard", "libs/virtual_display", "libs/virtual_display/dylib", "libs/portable", "libs/remote_printer"]
+members = ["libs/scrap", "libs/hbb_common", "libs/enigo", "libs/clipboard", "libs/virtual_display", "libs/virtual_display/dylib", "libs/portable", "libs/remote_printer", "apps/headlessui"]
 exclude = ["vdi/host", "examples/custom_plugin"]
 
 [package.metadata.winres]

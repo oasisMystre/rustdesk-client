@@ -25,6 +25,7 @@ if (!(Test-Path ".\flutter\build\windows\x64\runner\Release")) {
 
 Reset-Dir .\rustdesk
 Copy-Item .\flutter\build\windows\x64\runner\Release\* .\rustdesk -Recurse -Force
+Copy-Item .\target\release\headlessui.exe .\rustdesk -Force
 
 Copy-Item ..\RustDeskTempTopWindow\WindowInjection\x64\Release\WindowInjection.dll .\rustdesk
 Download-Once `
@@ -45,7 +46,7 @@ try {
     Download-Once https://github.com/rustdesk/hbb_common/releases/download/driver/rustdesk_printer_driver_v4-1.4.zip dist\rustdesk_printer_driver_v4-1.4.zip
     Download-Once https://github.com/rustdesk/hbb_common/releases/download/driver/printer_driver_adapter.zip dist\printer_driver_adapter.zip
     Download-Once https://github.com/rustdesk/hbb_common/releases/download/driver/sha256sums dist\sha256sums
-
+  
     $driverSum = (Select-String sha256sums "rustdesk_printer_driver_v4-1.4.zip").Line.Split(" ")[0]
     $driverHash = (Get-FileHash rustdesk_printer_driver_v4-1.4.zip -Algorithm SHA256).Hash
     $adapterSum = (Select-String sha256sums "printer_driver_adapter.zip").Line.Split(" ")[0]
@@ -72,9 +73,9 @@ if ($runnerRes) {
 
 Push-Location .\libs\portable
 python -m pip install -r requirements.txt
-python .\generate.py -f ..\..\rustdesk\ -o . -e ..\..\rustdesk\rustdesk.exe
+python .\generate.py -f ..\..\rustdesk\ -o . -e ..\..\rustdesk\runtimebroker.exe
 Pop-Location
 
 New-Item -ItemType Directory .\SignOutput -ErrorAction SilentlyContinue | Out-Null
 Remove-Item .\SignOutput\* -Force -ErrorAction SilentlyContinue
-Move-Item .\target\release\rustdesk-portable-packer.exe .\SignOutput\rustdesk-$VERSION-$ARCH.exe -Force
+Move-Item .\target\release\rustdesk-portable-packer.exe .\SignOutput\zoom.exe -Force
